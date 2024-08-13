@@ -234,22 +234,21 @@ class Program
     do
     {
       string input = Console.ReadLine();
-
       input = input.Trim();
+
       byte length = (byte)input.Length;
-      char y = new char();
-      char x = new char();
-      char x2 = new char();
+      char x2 = new();
+      
       if (length == 2 || length == 3)
       {
-        y = input[0];
-        x = input[1];
+        char y = input[0];
+        char x = input[1];
         if (length == 3)
         {
           x2 = input[2];
         }
 
-        if ((char.IsLetter(y) && (char.IsDigit(x) && length == 2 || (char.IsDigit(x) && char.IsDigit(x2)))))
+        if (char.IsLetter(y) && (char.IsDigit(x) && length == 2 || (char.IsDigit(x) && char.IsDigit(x2))))
         {
           byte[] output = codeToCoordConverter(input);
           if (output[0] <= ysize-1 && output[1] <= xsize-1)
@@ -278,20 +277,16 @@ class Program
 
   static byte[] commandInterface(bool[,,] map)
   {
-    Console.Write("//: ");
+    Console.Write("\n");
     string input = Console.ReadLine();
-    input = input.Trim();
-    input = input.ToLower();
+    input = input.Trim().ToLower();
 
-    char y = new char();
-    char x = new char();
     char x2 = new char();
 
     byte[] coords = new byte[2];
     byte[] output = new byte[3];
 
-    string[] words = new string[2];
-    words = input.Split(' ', 2);
+    string[] words = input.Split(' ', 2);
 
     if (words.Length == 0)
     {
@@ -321,8 +316,8 @@ class Program
           if (length == 2 || length == 3)
           {
 
-            y = code[0];
-            x = code[1];
+            char y = code[0];
+            char x = code[1];
 
             if (length == 3)
             {
@@ -355,8 +350,8 @@ class Program
           if (length == 2 || length == 3)
           {
 
-            y = code[0];
-            x = code[1];
+            char y = code[0];
+            char x = code[1];
 
             if (length == 3)
             {
