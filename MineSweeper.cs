@@ -283,7 +283,6 @@ class Program
 
     char x2 = new char();
 
-    byte[] coords = new byte[2];
     byte[] output = new byte[3];
 
     string[] words = input.Split(' ', 2);
@@ -324,9 +323,9 @@ class Program
               x2 = code[2];
             }
 
-            if ((char.IsLetter(y) && (char.IsDigit(x) && length == 2 || (char.IsDigit(x) && char.IsDigit(x2)))))
+            if (char.IsLetter(y) && (char.IsDigit(x) && length == 2 || (char.IsDigit(x) && char.IsDigit(x2))))
             {
-              coords = codeToCoordConverter(code);
+              byte[] coords = codeToCoordConverter(code);
               if (coords[0] <= (map.GetLength(0)-1) && coords[1] <= (map.GetLength(1)-1))
               {
                 output[0] = 1;
@@ -358,9 +357,10 @@ class Program
               x2 = code[2];
             }
 
-            if ((char.IsLetter(y) && (char.IsDigit(x) && length == 2 || (char.IsDigit(x) && char.IsDigit(x2)))))
+            if (char.IsLetter(y) && (char.IsDigit(x) && length == 2 || (char.IsDigit(x) && char.IsDigit(x2))))
             {
-              coords = codeToCoordConverter(code);
+              byte[] coords = codeToCoordConverter(code);
+
               if (coords[0] <= (map.GetLength(0)-1) && coords[1] <= (map.GetLength(1)-1))
               {
                 output[0] = 2;
@@ -399,6 +399,7 @@ class Program
   }
 
 
+
   static byte[] codeToCoordConverter(string code)
   {
     string input = code;
@@ -407,7 +408,7 @@ class Program
     string xstrcoord = input.Substring(0, 1);
     string ystrcoord = input.Substring(1);
     char xcharcoord = Convert.ToChar(xstrcoord);
-    int xcoord = ((int)xcharcoord) - 97;
+    int xcoord = xcharcoord - 97;
     int ycoord = Convert.ToInt32(ystrcoord) - 1;
 
     byte[] output = { (byte)ycoord, (byte)xcoord };
