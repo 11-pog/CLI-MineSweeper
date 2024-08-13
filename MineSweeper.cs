@@ -17,6 +17,8 @@ class Program
 
     /*Lembretes:
     - POSSIBILIDADE - Lembrar de inverter as posições das letras e numeros 
+    - PRO FUTURO - Fazer perder o jogo quando revela uma bomba
+    - PRO FUTURO - Fazer ganhar o jogo caso todas as bombas estiverem com bandeira
     */
 
     switch (UserInput(1, 4, true))
