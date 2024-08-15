@@ -302,6 +302,9 @@ internal class MineSweeperCamp
         Display();
         return;
       case "help":
+      case "h":
+      case "ajuda":
+      case "ayuda":
         Console.WriteLine(
           "Aqui esta uma lista de comandos:\n" +
           "\nhelp - Mostra todos comandos." +
