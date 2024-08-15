@@ -20,12 +20,10 @@ internal class MineSweeperCamp
 
     this.ysize = ysize;
     this.xsize = xsize;
-
-    Setup();
   }
 
 
-  private void Setup(byte chance = 5)
+  internal void Setup(byte chance = 5)
   {
     for (int y = 0; y < ysize; y++)
     {
@@ -380,6 +378,7 @@ class Program
 
     MineSweeperCamp Camp = new(ysize, xsize);
 
+    Camp.Setup();
     Camp.Display();
 
     Console.Write("Digite as coordenadas para começar: ");
