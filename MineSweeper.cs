@@ -1,7 +1,11 @@
 internal class MineSweeperCamp
 {
   internal Random rdn = new();
-  static readonly sbyte[,] surrounding = { { 1, 0 }, { 1, 1 }, { 0, 1 }, { -1, 1 }, { -1, 0 }, { -1, -1 }, { 0, -1 }, { 1, -1 }, { 0, 0 } };
+  internal static readonly sbyte[,] surrounding = {
+    { 1, 0 }, { 1, 1 }, { 0, 1 },
+    { -1, 1 },            { -1, 0 },
+    { -1, -1 }, { 0, -1 }, { 1, -1 },
+    { 0, 0 } };
 
   internal byte ysize;
   internal byte xsize;
@@ -43,7 +47,7 @@ internal class MineSweeperCamp
   }
 
 
-  static void ClearConsole()
+  static void Clear()
   {
     for (int i = 0; i < 50; i++)
     {
@@ -58,7 +62,7 @@ internal class MineSweeperCamp
     {
       field[y, x, 0] = true;
 
-      ExpandRevealedArea();
+      FloodFill();
       Display();
     }
     else
@@ -86,7 +90,7 @@ internal class MineSweeperCamp
 
   internal void Display()
   {
-    ClearConsole();
+    Clear();
     Console.Write("\n   ");
 
     for (byte x = 0; x < xsize; x++)
@@ -153,7 +157,7 @@ internal class MineSweeperCamp
   }
 
 
-  internal void ExpandRevealedArea()
+  internal void FloodFill()
   {
     bool repeat;
 
@@ -213,7 +217,7 @@ internal class MineSweeperCamp
 
 
 
-  internal byte[] IsCodeValid(string[] input)
+  internal byte[]? IsCodeValid(string[] input)
   {
     if (input != null && input.Length > 1 && !string.IsNullOrEmpty(input[1]))
     {
@@ -237,9 +241,22 @@ internal class MineSweeperCamp
       }
     }
 
-    return [];
+    return null;
   }
 
+
+  internal static void Perform(Action<byte, byte> action, byte[]? coords)
+  {
+    if (coords is not null)
+    {
+      action(coords[0], coords[1]);
+      return;
+    }
+    else
+    {
+      Console.WriteLine("Coordenada invalida, tente novamente.");
+    }
+  }
 
   internal static byte[] CodeToCoordConverter(string code)
   {
@@ -261,8 +278,13 @@ internal class MineSweeperCamp
   internal void Action()
   {
     Console.Write("\n");
-    string input = Console.ReadLine().Trim().ToLower();
-
+    string? input = Console.ReadLine();
+    if (input is null)
+    {
+      Console.WriteLine("Digite um comando, use 'help' para ver a lista de comandos.");
+      return;
+    }
+    input = input.Trim().ToLower();
     string[] words = input.Split(' ', 2);
 
     if (words.Length == 0)
@@ -271,7 +293,7 @@ internal class MineSweeperCamp
       return;
     }
 
-    byte[] coords = IsCodeValid(words);
+    byte[]? coords = IsCodeValid(words);
 
     switch (words[0])
     {
@@ -282,32 +304,32 @@ internal class MineSweeperCamp
         Display();
         return;
       case "help":
-        Console.WriteLine("Aqui esta uma lista de comandos:\n\nhelp - Mostra todos comandos.\ndisplay - Imprime o campo no terminal.\ndig [a1] - Cava um espaço.\nflag [a1] - marca um espaço com bandeira.\nexit - Termina o codigo.");
+        Console.WriteLine(
+          "Aqui esta uma lista de comandos:\n" +
+          "\nhelp - Mostra todos comandos." +
+          "\ndisplay - Imprime o campo no terminal." +
+          "\ndig [a1] - Cava um espaço." +
+          "\nflag [a1] - marca um espaço com bandeira." +
+          "\nexit - Termina o codigo."
+          );
         return;
       case "dig":
       case "d":
-        if (coords.Any())
-        {
-          Dig(coords[0], coords[1]);
-          return;
-        }
-
-        Console.WriteLine("Coordenada invalida, tente novamente.");
+        Perform(Dig, coords);
         return;
       case "flag":
       case "f":
-        if (coords.Any())
-        {
-          Flag(coords[0], coords[1]);
-          return;
-        }
-
-        Console.WriteLine("Coordenada invalida, tente novamente.");
+        Perform(Flag, coords);
         return;
       case "exit":
       case "quit":
       case "end":
         Environment.Exit(0);
+        return;
+      case "print":
+      case "say":
+      case "diz":
+        Console.WriteLine(words[1]);
         return;
       default:
         Console.WriteLine("Comando inválido. Use 'help' para ver a lista de comando.");
@@ -320,7 +342,6 @@ internal class MineSweeperCamp
 
 class Program
 {
-  static readonly sbyte[,] surrounding = { { 1, 0 }, { 1, 1 }, { 0, 1 }, { -1, 1 }, { -1, 0 }, { -1, -1 }, { 0, -1 }, { 1, -1 }, { 0, 0 } };
   static void Main()
   {
     Console.WriteLine("           ---MINESWEEPER---\nCampo minado so que NO TERMINAL AAHAHHAHHHA");
@@ -365,11 +386,10 @@ class Program
 
     do
     {
-      string input = Console.ReadLine().Trim();
+      string? input = Console.ReadLine()?.Trim();
+      byte? length = (byte?)input?.Length;
 
-      byte length = (byte)input.Length;
-
-      if (length == 2 || length == 3)
+      if (input is not null && (length == 2 || length == 3))
       {
         char y = input[0];
         char x = input[1];
@@ -386,8 +406,8 @@ class Program
 
             for (byte i = 0; i < 8; i++)
             {
-              byte yoffset = (byte)(output[0] + surrounding[i, 0]);
-              byte xoffset = (byte)(output[1] + surrounding[i, 1]);
+              byte yoffset = (byte)(output[0] + MineSweeperCamp.surrounding[i, 0]);
+              byte xoffset = (byte)(output[1] + MineSweeperCamp.surrounding[i, 1]);
 
               if (yoffset < ysize && xoffset < xsize)
               {
@@ -412,7 +432,7 @@ class Program
       Console.Write("Tente denovo: ");
     } while (true);
 
-    Camp.ExpandRevealedArea();
+    Camp.FloodFill();
     Camp.Display();
 
     Console.WriteLine("O jogo começou, use 'help' para ver a lista de comandos.");
