@@ -1,8 +1,325 @@
-using System;
+internal class MineSweeperCamp
+{
+  internal Random rdn = new();
+  static readonly sbyte[,] surrounding = { { 1, 0 }, { 1, 1 }, { 0, 1 }, { -1, 1 }, { -1, 0 }, { -1, -1 }, { 0, -1 }, { 1, -1 }, { 0, 0 } };
+
+  internal byte ysize;
+  internal byte xsize;
+  internal bool[,,] field;
+
+  internal MineSweeperCamp(byte ysize, byte xsize)
+  {
+    field = new bool[ysize, xsize, 3];
+    //bombas[y,x,0] = Revelado ou não
+    //bombas[y,x,1] = Flagado ou não
+    //bombas[y,x,2] = Bomba ou não
+
+    this.ysize = ysize;
+    this.xsize = xsize;
+
+    Setup();
+  }
+
+
+  private void Setup(byte chance = 5)
+  {
+    for (int y = 0; y < ysize; y++)
+    {
+      for (int x = 0; x < xsize; x++)
+      {
+        field[y, x, 0] = false;
+        field[y, x, 1] = false;
+
+        if (rdn.Next(0, chance) == 0)
+        {
+          field[y, x, 2] = true;
+        }
+        else
+        {
+          field[y, x, 2] = false;
+        }
+      }
+    }
+  }
+
+
+  static void ClearConsole()
+  {
+    for (int i = 0; i < 50; i++)
+    {
+      Console.WriteLine('\n');
+    }
+  }
+
+
+  internal void Dig(byte y, byte x)
+  {
+    if (field[y, x, 1] == false)
+    {
+      field[y, x, 0] = true;
+
+      ExpandRevealedArea();
+      Display();
+    }
+    else
+    {
+      Console.WriteLine("Você não pode revelar uma posição marcada.");
+    }
+  }
+
+
+  internal void Flag(byte y, byte x)
+  {
+    if (field[y, x, 0] == false)
+    {
+      field[y, x, 1] = !field[y, x, 1];
+
+      Display();
+    }
+    else
+    {
+      Console.WriteLine("Você não pode desmarcar uma posição já revelada.");
+    }
+  }
+
+
+
+  internal void Display()
+  {
+    ClearConsole();
+    Console.Write("\n   ");
+
+    for (byte x = 0; x < xsize; x++)
+    {
+      Console.Write((char)(x + 65) + " ");
+    }
+
+    Console.Write("\n");
+
+    for (byte y = 0; y < ysize; y++)
+    {
+      if (y < 9)
+      {
+        Console.Write(" ");
+      }
+      Console.Write((y + 1) + "|");
+
+      for (byte x = 0; x < xsize; x++)
+      {
+        if (field[y, x, 0] == false)
+        {
+          if (field[y, x, 1])
+          {
+            Console.Write("# ");
+          }
+          else
+          {
+            Console.Write("O ");
+          }
+        }
+        else if (field[y, x, 2])
+        {
+          Console.Write("* ");
+        }
+        else
+        {
+          byte bombcount = 0;
+          for (byte s = 0; s < 8; s++)
+          {
+            byte yoffset = (byte)(y + surrounding[s, 0]);
+            byte xoffset = (byte)(x + surrounding[s, 1]);
+
+            if (yoffset < ysize && xoffset < xsize && field[yoffset, xoffset, 2] == true)
+            {
+              bombcount++;
+            }
+          }
+
+          if (bombcount > 0)
+          {
+            Console.Write(bombcount + " ");
+          }
+          else
+          {
+            Console.Write("  ");
+          }
+
+        }
+
+      }
+
+      Console.Write("\n");
+    }
+  }
+
+
+  internal void ExpandRevealedArea()
+  {
+    bool repeat;
+
+    do
+    {
+      repeat = false;
+      for (byte i = 0; i < ysize; i++)
+      {
+        for (byte j = 0; j < xsize; j++)
+        {
+          bool hasNeighborBomb = false;
+          byte isCorner = 0;
+          byte RevealedNeighbors = 0;
+
+          for (int h = 0; h < 9; h++)
+          {
+            byte yoffset = (byte)(i + surrounding[h, 0]);
+            byte xoffset = (byte)(j + surrounding[h, 1]);
+
+            if (yoffset < ysize && xoffset < xsize)
+            {
+              if (field[yoffset, xoffset, 2] == true)
+              {
+                hasNeighborBomb = true;
+              }
+              if (field[yoffset, xoffset, 0] == true && h != 8)
+              {
+                RevealedNeighbors++;
+              }
+            }
+            else
+            {
+              isCorner++;
+            }
+          }
+
+          if (!hasNeighborBomb && field[i, j, 0] == true && ((RevealedNeighbors < 8 &&
+          isCorner == 0) || (RevealedNeighbors < 5 && isCorner == 3) ||
+          (RevealedNeighbors < 3 && isCorner == 5)))
+          {
+            repeat = true;
+            for (int h = 0; h < 9; h++)
+            {
+              byte yoffset = (byte)(i + surrounding[h, 0]);
+              byte xoffset = (byte)(j + surrounding[h, 1]);
+
+              if (yoffset < ysize && xoffset < xsize)
+              {
+                field[yoffset, xoffset, 0] = true;
+              }
+            }
+          }
+        }
+      }
+    } while (repeat);
+  }
+
+
+
+  internal byte[] IsCodeValid(string[] input)
+  {
+    if (input != null && input.Length > 1 && !string.IsNullOrEmpty(input[1]))
+    {
+      string code = input[1].Trim();
+      byte length = (byte)code.Length;
+
+      if (length == 2 || length == 3)
+      {
+        char y = code[0];
+        char x = code[1];
+        char x2 = (length == 3) ? code[2] : '\0';
+
+        if (char.IsLetter(y) && (char.IsDigit(x) && length == 2 || (char.IsDigit(x) && char.IsDigit(x2))))
+        {
+          byte[] coords = CodeToCoordConverter(code);
+          if (coords[0] <= (ysize - 1) && coords[1] <= (xsize - 1))
+          {
+            return [coords[0], coords[1]];
+          }
+        }
+      }
+    }
+
+    return [];
+  }
+
+
+  internal static byte[] CodeToCoordConverter(string code)
+  {
+    string input = code;
+    input = input.Trim();
+    input = input.ToLower();
+    string xstrcoord = input.Substring(0, 1);
+    string ystrcoord = input.Substring(1);
+    char xcharcoord = Convert.ToChar(xstrcoord);
+    int xcoord = xcharcoord - 97;
+    int ycoord = Convert.ToInt32(ystrcoord) - 1;
+
+    byte[] output = { (byte)ycoord, (byte)xcoord };
+    return output;
+  }
+
+
+
+  internal void Action()
+  {
+    Console.Write("\n");
+    string input = Console.ReadLine().Trim().ToLower();
+
+    string[] words = input.Split(' ', 2);
+
+    if (words.Length == 0)
+    {
+      Console.WriteLine("Digite um comando, use 'help' para ver a lista de comandos.");
+      return;
+    }
+
+    byte[] coords = IsCodeValid(words);
+
+    switch (words[0])
+    {
+      case "display":
+      case "disp":
+      case "camp":
+      case "c":
+        Display();
+        return;
+      case "help":
+        Console.WriteLine("Aqui esta uma lista de comandos:\n\nhelp - Mostra todos comandos.\ndisplay - Imprime o campo no terminal.\ndig [a1] - Cava um espaço.\nflag [a1] - marca um espaço com bandeira.\nexit - Termina o codigo.");
+        return;
+      case "dig":
+      case "d":
+        if (coords.Any())
+        {
+          Dig(coords[0], coords[1]);
+          return;
+        }
+
+        Console.WriteLine("Coordenada invalida, tente novamente.");
+        return;
+      case "flag":
+      case "f":
+        if (coords.Any())
+        {
+          Flag(coords[0], coords[1]);
+          return;
+        }
+
+        Console.WriteLine("Coordenada invalida, tente novamente.");
+        return;
+      case "exit":
+      case "quit":
+      case "end":
+        Environment.Exit(0);
+        return;
+      default:
+        Console.WriteLine("Comando inválido. Use 'help' para ver a lista de comando.");
+        return;
+    }
+  }
+}
+
+
 
 class Program
 {
-
   static readonly sbyte[,] surrounding = { { 1, 0 }, { 1, 1 }, { 0, 1 }, { -1, 1 }, { -1, 0 }, { -1, -1 }, { 0, -1 }, { 1, -1 }, { 0, 0 } };
   static void Main()
   {
@@ -11,7 +328,6 @@ class Program
     byte xsize = 16;
     byte ysize = 16;
 
-  
     Console.WriteLine("Escolha o tamanho do campo:");
     Console.WriteLine("1 - Padrão (7x7)\n2 - Grande (16x16)\n3 - Personalizado");
 
@@ -41,454 +357,71 @@ class Program
         break;
     }
 
-    bool[,,] bombas = new bool[ysize, xsize, 3];
-    //bombas[y,x,0] = Revelado ou não
-    //bombas[y,x,1] = Flagado ou não
-    //bombas[y,x,2] = Bomba ou não
+    MineSweeperCamp Camp = new(ysize, xsize);
 
-    Random rdn = new Random();
-
-    for (int i = 0; i < bombas.GetLength(0); i++)
-    {
-      for (int j = 0; j < bombas.GetLength(1); j++)
-      {
-        for (int h = 0; h < bombas.GetLength(2) - 1; h++)
-        {
-          bombas[i, j, h] = false;
-        }
-        if (rdn.Next(0, 5) == 0)
-        {
-          bombas[i, j, 2] = true;
-        }
-        else
-        {
-          bombas[i, j, 2] = false;
-        }
-      }
-    }
-
-    display(bombas);
+    Camp.Display();
 
     Console.Write("Digite as coordenadas para começar: ");
 
-    byte[] coords = starterCodeInput(ysize, xsize);
-
-    bombas[coords[0], coords[1], 2] = false;
-    bombas[coords[0], coords[1], 0] = true; 
-
-    for(byte i = 0; i < 8; i++)
-    {
-      byte yoffset = (byte)(coords[0] + surrounding[i, 0]);
-      byte xoffset = (byte)(coords[1] + surrounding[i, 1]);
-
-      if (yoffset < ysize && xoffset < xsize)
-      {
-        bombas[yoffset, xoffset, 2] = false;
-        bombas[yoffset, xoffset, 0] = true;
-      }
-    }
-
-    bool repeat = false;
-
     do
     {
-      repeat = false;
-      for (byte i = 0; i < ysize; i++)
-      {
-        for (byte j = 0; j < xsize; j++)
-        {
-          bool hasNeighborBomb = false;
-          byte isCorner = 0;
-          byte RevealedNeighbors = 0;
-
-          for (int h = 0; h < 9; h++)
-          {
-            byte yoffset = (byte)(i + surrounding[h, 0]);
-            byte xoffset = (byte)(j + surrounding[h, 1]);
-
-            if (yoffset < ysize && xoffset < xsize)
-            {
-              if (bombas[yoffset, xoffset, 2] == true)
-              {
-                hasNeighborBomb = true;
-              }
-              if (bombas[yoffset, xoffset, 0] == true && h != 8)
-              {
-                RevealedNeighbors++;
-              }
-            }
-            else
-            {
-              isCorner++;
-            }
-          }
-
-          if (!hasNeighborBomb && bombas[i, j, 0] == true && ((RevealedNeighbors < 8 && isCorner == 0) || (RevealedNeighbors < 5 && isCorner == 3) || (RevealedNeighbors < 3 && isCorner == 5)))
-          {
-            repeat = true;
-            for (int h = 0; h < 9; h++)
-            {
-              byte yoffset = (byte)(i + surrounding[h, 0]);
-              byte xoffset = (byte)(j + surrounding[h, 1]);
-
-              if (yoffset < ysize && xoffset < xsize)
-              {
-                bombas[yoffset, xoffset, 0] = true;
-              }
-            }
-          }
-        }
-      }
-    } while (repeat);
-
-    display(bombas);
-
-    Console.WriteLine("O jogo começou, use 'help' para ver a lista de comandos.");
-
-    while (true)
-    {
-      byte[] tempVar = commandInterface(bombas);
-
-
-      if (tempVar[0] == 1)
-      {
-        if (bombas[tempVar[1], tempVar[2], 1] == false)
-        {
-          bombas[tempVar[1], tempVar[2], 0] = true;
-
-          do
-          {
-            repeat = false;
-            for (byte i = 0; i < ysize; i++)
-            {
-              for (byte j = 0; j < xsize; j++)
-              {
-                bool hasNeighborBomb = false;
-                byte isCorner = 0;
-                byte RevealedNeighbors = 0;
-
-                for (int h = 0; h < 9; h++)
-                {
-                  byte yoffset = (byte)(i + surrounding[h, 0]);
-                  byte xoffset = (byte)(j + surrounding[h, 1]);
-
-                  if (yoffset < ysize && xoffset < xsize)
-                  {
-                    if (bombas[yoffset, xoffset, 2] == true)
-                    {
-                      hasNeighborBomb = true;
-                    }
-                    if (bombas[yoffset, xoffset, 0] == true && h != 8)
-                    {
-                      RevealedNeighbors++;
-                    }
-                  }
-                  else
-                  {
-                    isCorner++;
-                  }
-                }
-
-                if (!hasNeighborBomb && bombas[i, j, 0] == true && ((RevealedNeighbors < 8 && isCorner == 0) || (RevealedNeighbors < 5 && isCorner == 3) || (RevealedNeighbors < 3 && isCorner == 5)))
-                {
-                  repeat = true;
-                  for (int h = 0; h < 9; h++)
-                  {
-                    byte yoffset = (byte)(i + surrounding[h, 0]);
-                    byte xoffset = (byte)(j + surrounding[h, 1]);
-
-                    if (yoffset < ysize && xoffset < xsize)
-                    {
-                      bombas[yoffset, xoffset, 0] = true;
-                    }
-                  }
-                }
-              }
-            }
-          } while (repeat);
-
-          display(bombas);
-        }
-        else
-        {
-          Console.WriteLine("Você não pode revelar uma posição marcada.");
-        }
-      }
-      else if (tempVar[0] == 2)
-      {
-        if (bombas[tempVar[1], tempVar[2], 0] == false)
-        {
-          bombas[tempVar[1], tempVar[2], 1] = !bombas[tempVar[1], tempVar[2], 1];
-          display(bombas);
-        }
-        else
-        {
-          Console.WriteLine("Você não pode desmarcar uma posição já revelada.");
-        }
-      }
-    }
-  }
-
-
-
-  static byte[] starterCodeInput(byte ysize, byte xsize)
-  {
-    do
-    {
-      string input = Console.ReadLine();
-      input = input.Trim();
+      string input = Console.ReadLine().Trim();
 
       byte length = (byte)input.Length;
-      char x2 = new();
-      
+
       if (length == 2 || length == 3)
       {
         char y = input[0];
         char x = input[1];
-        if (length == 3)
-        {
-          x2 = input[2];
-        }
+        char x2 = (length == 3) ? input[2] : '\0';
 
         if (char.IsLetter(y) && (char.IsDigit(x) && length == 2 || (char.IsDigit(x) && char.IsDigit(x2))))
         {
-          byte[] output = codeToCoordConverter(input);
-          if (output[0] <= ysize-1 && output[1] <= xsize-1)
+          byte[] output = MineSweeperCamp.CodeToCoordConverter(input);
+          if (output[0] <= ysize - 1 && output[1] <= xsize - 1)
           {
-            return output;
+            Camp.field[output[0], output[1], 2] = false;
+            Camp.field[output[0], output[1], 0] = true;
+
+
+            for (byte i = 0; i < 8; i++)
+            {
+              byte yoffset = (byte)(output[0] + surrounding[i, 0]);
+              byte xoffset = (byte)(output[1] + surrounding[i, 1]);
+
+              if (yoffset < ysize && xoffset < xsize)
+              {
+                Camp.field[yoffset, xoffset, 2] = false;
+                Camp.field[yoffset, xoffset, 0] = true;
+              }
+            }
+            break;
           }
           Console.WriteLine("Oops, parece que a coordenada que você entrou esta fora da area do jogo.");
-          Console.Write("Tente denovo: ");
         }
         else
         {
           Console.WriteLine("Oops, pareçe que você entrou com uma coordenada invalida, faça questão de escrever nesse formato: A1, B2, C27, etc (não é case sensitive).");
-          Console.Write("Tente denovo: ");
         }
       }
       else
       {
         Console.WriteLine("Oops, pareçe que você entrou com uma coordenada invalida, faça questão de escrever nesse formato: A1, B2, C27, etc (não é case sensitive).");
-        Console.Write("Tente denovo: ");
       }
+
+      Console.Write("Tente denovo: ");
     } while (true);
-  }
 
+    Camp.ExpandRevealedArea();
+    Camp.Display();
 
+    Console.WriteLine("O jogo começou, use 'help' para ver a lista de comandos.");
 
-
-  static byte[] commandInterface(bool[,,] map)
-  {
-    Console.Write("\n");
-    string input = Console.ReadLine();
-    input = input.Trim().ToLower();
-
-    char x2 = new char();
-
-    byte[] output = new byte[3];
-
-    string[] words = input.Split(' ', 2);
-
-    if (words.Length == 0)
+    while (true)
     {
-      Console.WriteLine("Digite um comando, use 'help' para ver a lista de comandos.");
-      output[0] = 0;
-      return output;
-    }
-
-    switch (words[0])
-    {
-      case "display":
-      case "disp":
-      case "camp":
-      case "c":
-        display(map);
-        break;
-      case "help":
-        Console.WriteLine("Aqui esta uma lista de comandos:\n\nhelp - Mostra todos comandos.\ndisplay - Imprime o campo no terminal.\ndig [a1] - Cava um espaço.\nflag [a1] - marca um espaço com bandeira.\nexit - Termina o codigo.");
-        break;
-      case "dig":
-      case "d":
-        if (words != null && words.Length > 1 && !String.IsNullOrEmpty(words[1]))
-        {
-          string code = words[1].Trim();
-          byte length = (byte)code.Length;
-
-          if (length == 2 || length == 3)
-          {
-
-            char y = code[0];
-            char x = code[1];
-
-            if (length == 3)
-            {
-              x2 = code[2];
-            }
-
-            if (char.IsLetter(y) && (char.IsDigit(x) && length == 2 || (char.IsDigit(x) && char.IsDigit(x2))))
-            {
-              byte[] coords = codeToCoordConverter(code);
-              if (coords[0] <= (map.GetLength(0)-1) && coords[1] <= (map.GetLength(1)-1))
-              {
-                output[0] = 1;
-                output[1] = coords[0];
-                output[2] = coords[1];
-                return output;
-              }
-            }
-          }
-        }
-
-        Console.WriteLine("Coordenada invalida, tente novamente.");
-        break;
-      case "flag":
-      case "f":
-        if (words != null && words.Length > 1 && !String.IsNullOrEmpty(words[1]))
-        {
-          string code = words[1].Trim();
-          byte length = (byte)code.Length;
-
-          if (length == 2 || length == 3)
-          {
-
-            char y = code[0];
-            char x = code[1];
-
-            if (length == 3)
-            {
-              x2 = code[2];
-            }
-
-            if (char.IsLetter(y) && (char.IsDigit(x) && length == 2 || (char.IsDigit(x) && char.IsDigit(x2))))
-            {
-              byte[] coords = codeToCoordConverter(code);
-
-              if (coords[0] <= (map.GetLength(0)-1) && coords[1] <= (map.GetLength(1)-1))
-              {
-                output[0] = 2;
-                output[1] = coords[0];
-                output[2] = coords[1];
-                return output;
-              }
-            }
-          }
-        }
-
-        Console.WriteLine("Coordenada invalida, tente novamente.");
-        break;
-      case "exit":
-      case "quit":
-      case "end":
-        Environment.Exit(0);
-        break;
-      default:
-        Console.WriteLine("Comando inválido. Use 'help' para ver a lista de comando.");
-        break;
-
-    }
-    output[0] = 0;
-    return output;
-  }
-
-
-
-  static void clearConsole()
-  {
-    for (int i = 0; i < 50; i++)
-    {
-      Console.WriteLine('\n');
+      Camp.Action();
     }
   }
-
-
-
-  static byte[] codeToCoordConverter(string code)
-  {
-    string input = code;
-    input = input.Trim();
-    input = input.ToLower();
-    string xstrcoord = input.Substring(0, 1);
-    string ystrcoord = input.Substring(1);
-    char xcharcoord = Convert.ToChar(xstrcoord);
-    int xcoord = xcharcoord - 97;
-    int ycoord = Convert.ToInt32(ystrcoord) - 1;
-
-    byte[] output = { (byte)ycoord, (byte)xcoord };
-    return output;
-  }
-
-
-
-
-  static void display(bool[,,] bombas)
-  {
-    clearConsole();
-
-    Console.Write("\n   ");
-
-    for (byte i = 0; i < bombas.GetLength(1); i++)
-    {
-      Console.Write((char)(i + 65) + " ");
-    }
-
-    Console.Write("\n");
-
-    for (byte i = 0; i < bombas.GetLength(0); i++)
-    {
-      if (i < 9)
-      {
-        Console.Write(" ");
-      }
-      Console.Write((i + 1) + "|");
-
-      for (byte j = 0; j < bombas.GetLength(1); j++)
-      {
-        if (bombas[i, j, 0] == false)
-        {
-          if (bombas[i, j, 1])
-          {
-            Console.Write("# ");
-          }
-          else
-          {
-            Console.Write("O ");
-          }
-        }
-        else if (bombas[i, j, 2])
-        {
-          Console.Write("* ");
-        }
-        else
-        { 
-          byte bombcount = 0;
-          for(int h = 0; h < 8; h++)
-          {
-            byte yoffset = (byte)(i + surrounding[h, 0]);
-            byte xoffset = (byte)(j + surrounding[h, 1]);
-
-            if (yoffset < bombas.GetLength(0) && xoffset < bombas.GetLength(1) && bombas[yoffset, xoffset, 2] == true)
-            {              
-                bombcount++;        
-            }
-          }
-
-          if(bombcount>0)
-          {
-            Console.Write(bombcount + " ");
-          }
-          else
-          {
-            Console.Write("  ");
-          }
-          
-        }
-
-      }
-
-      Console.Write("\n");
-    }
-  }
-
 
 
 
@@ -538,6 +471,5 @@ class Program
         }
       } while (true);
     }
-
   }
 }
