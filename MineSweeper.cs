@@ -5,7 +5,8 @@ internal class MineSweeperCamp
     { 1, 0 }, { 1, 1 }, { 0, 1 },
     { -1, 1 },            { -1, 0 },
     { -1, -1 }, { 0, -1 }, { 1, -1 },
-    { 0, 0 } };
+    { 0, 0 }
+  };
 
   internal byte ysize;
   internal byte xsize;
@@ -23,27 +24,110 @@ internal class MineSweeperCamp
   }
 
 
-  internal void Setup(byte chance = 5)
+  internal void ForEachCell(Action<byte, byte> Act)
   {
-    for (int y = 0; y < ysize; y++)
+    for (byte y = 0; y < ysize; y++)
     {
-      for (int x = 0; x < xsize; x++)
+      for (byte x = 0; x < xsize; x++)
       {
-        field[y, x, 0] = false;
-        field[y, x, 1] = false;
-
-        if (rdn.Next(0, chance) == 0)
-        {
-          field[y, x, 2] = true;
-        }
-        else
-        {
-          field[y, x, 2] = false;
-        }
+        Act(y, x);
       }
     }
   }
 
+
+  internal void ForEachNeighbor(byte y, byte x, Action<byte, byte> Act)
+  {
+    for (byte n = 0; n < 9; n++)
+    {
+      byte yoffset = GetOffsetY(y, n);
+      byte xoffset = GetOffsetX(x, n);
+
+      Act(yoffset, xoffset);
+    }
+  }
+
+
+  internal static byte GetOffsetY(byte y, byte n)
+  {
+    return (byte)(y + surrounding[n, 0]);
+  }
+
+
+  internal static byte GetOffsetX(byte x, byte n)
+  {
+    return (byte)(x + surrounding[n, 1]);
+  }
+
+  internal byte[] GetCellData(byte y, byte x)
+  {
+    byte OutOfBoundNeighbors = 0;
+    byte RevealedNeighbors = 0;
+    byte NeighborBombs = 0;
+
+    for (byte n = 0; n < 8; n++)
+    {
+      byte offsety = GetOffsetY(y, n);
+      byte offsetx = GetOffsetX(x, n);
+
+      if (offsety < ysize && offsetx < xsize)
+      {
+        if (field[offsety, offsetx, 0] == true)
+        {
+          RevealedNeighbors++;
+        }
+
+        if (field[offsety, offsetx, 2] == true)
+        {
+          NeighborBombs++;
+        }
+      }
+      else
+      {
+        OutOfBoundNeighbors++;
+      }
+    }
+
+    return [NeighborBombs, OutOfBoundNeighbors, RevealedNeighbors];
+  }
+
+
+  internal void SetupRdn(byte chance = 20)
+  {
+    void PerformSetup(byte y, byte x)
+    {
+      field[y, x, 0] = false;
+      field[y, x, 1] = false;
+      if (rdn.Next(0, chance) == 0)
+      {
+        field[y, x, 2] = true;
+      }
+      else
+      {
+        field[y, x, 2] = false;
+      }
+    }
+
+    ForEachCell(PerformSetup);
+  }
+
+  /*
+  internal static void SetupConway()
+  {
+
+  }
+
+
+  internal void SetupPerlin()
+  {
+    void PerformSetup(byte y, byte x)
+    {
+      //int randomnumber = rdn.perlin
+    }
+
+    ForEachCell(PerformSetup);
+  }
+  */
 
   static void Clear()
   {
@@ -60,7 +144,7 @@ internal class MineSweeperCamp
     {
       field[y, x, 0] = true;
 
-      FloodFill();
+      IterateFloodFill();
       Display();
     }
     else
@@ -125,17 +209,7 @@ internal class MineSweeperCamp
         }
         else
         {
-          byte bombcount = 0;
-          for (byte s = 0; s < 8; s++)
-          {
-            byte yoffset = (byte)(y + surrounding[s, 0]);
-            byte xoffset = (byte)(x + surrounding[s, 1]);
-
-            if (yoffset < ysize && xoffset < xsize && field[yoffset, xoffset, 2] == true)
-            {
-              bombcount++;
-            }
-          }
+          byte bombcount = GetCellData(y, x)[0];
 
           if (bombcount > 0)
           {
@@ -155,58 +229,73 @@ internal class MineSweeperCamp
   }
 
 
-  internal void FloodFill()
+  internal void BFSFloodFill()
   {
+    void Reveal(byte y, byte x)
+    {
+      if (y < ysize && x < xsize)
+      {
+        field[y, x, 0] = true;
+      }
+    }
     bool repeat;
 
     do
     {
       repeat = false;
-      for (byte i = 0; i < ysize; i++)
+      for (byte y = 0; y < ysize; y++)
       {
-        for (byte j = 0; j < xsize; j++)
+        for (byte x = 0; x < xsize; x++)
         {
-          bool hasNeighborBomb = false;
-          byte isCorner = 0;
-          byte RevealedNeighbors = 0;
+          byte[] cellData = GetCellData(y, x);
 
-          for (int h = 0; h < 9; h++)
-          {
-            byte yoffset = (byte)(i + surrounding[h, 0]);
-            byte xoffset = (byte)(j + surrounding[h, 1]);
+          bool hasNeighborBomb = cellData[0] != 0;
+          byte OutOfBoundsNeighbor = cellData[1];
+          byte RevealedNeighbors = cellData[2];
 
-            if (yoffset < ysize && xoffset < xsize)
-            {
-              if (field[yoffset, xoffset, 2] == true)
-              {
-                hasNeighborBomb = true;
-              }
-              if (field[yoffset, xoffset, 0] == true && h != 8)
-              {
-                RevealedNeighbors++;
-              }
-            }
-            else
-            {
-              isCorner++;
-            }
-          }
-
-          if (!hasNeighborBomb && field[i, j, 0] == true && ((RevealedNeighbors < 8 &&
-          isCorner == 0) || (RevealedNeighbors < 5 && isCorner == 3) ||
-          (RevealedNeighbors < 3 && isCorner == 5)))
+          if (!hasNeighborBomb && field[y, x, 0] == true && ((RevealedNeighbors < 8 &&
+          OutOfBoundsNeighbor == 0) || (RevealedNeighbors < 5 && OutOfBoundsNeighbor == 3) ||
+          (RevealedNeighbors < 3 && OutOfBoundsNeighbor == 5)))
           {
             repeat = true;
-            for (int h = 0; h < 9; h++)
-            {
-              byte yoffset = (byte)(i + surrounding[h, 0]);
-              byte xoffset = (byte)(j + surrounding[h, 1]);
+            ForEachNeighbor(y, x, Reveal);
+          }
+        }
+      }
+    } while (repeat);
+  }
 
-              if (yoffset < ysize && xoffset < xsize)
-              {
-                field[yoffset, xoffset, 0] = true;
-              }
-            }
+
+  internal void IterateFloodFill()
+  {
+    void Reveal(byte y, byte x)
+    {
+      if (y < ysize && x < xsize)
+      {
+        field[y, x, 0] = true;
+      }
+    }
+    bool repeat;
+
+    do
+    {
+      repeat = false;
+      for (byte y = 0; y < ysize; y++)
+      {
+        for (byte x = 0; x < xsize; x++)
+        {
+          byte[] cellData = GetCellData(y, x);
+
+          bool hasNeighborBomb = cellData[0] != 0;
+          byte OutOfBoundsNeighbor = cellData[1];
+          byte RevealedNeighbors = cellData[2];
+
+          if (!hasNeighborBomb && field[y, x, 0] == true && ((RevealedNeighbors < 8 &&
+          OutOfBoundsNeighbor == 0) || (RevealedNeighbors < 5 && OutOfBoundsNeighbor == 3) ||
+          (RevealedNeighbors < 3 && OutOfBoundsNeighbor == 5)))
+          {
+            repeat = true;
+            ForEachNeighbor(y, x, Reveal);
           }
         }
       }
@@ -381,7 +470,7 @@ class Program
 
     MineSweeperCamp Camp = new(ysize, xsize);
 
-    Camp.Setup();
+    Camp.SetupRdn();
     Camp.Display();
 
     Console.Write("Digite as coordenadas para começar: ");
@@ -434,7 +523,7 @@ class Program
       Console.Write("Tente denovo: ");
     } while (true);
 
-    Camp.FloodFill();
+    Camp.IterateFloodFill();
     Camp.Display();
 
     Console.WriteLine("O jogo começou, use 'help' para ver a lista de comandos.");
