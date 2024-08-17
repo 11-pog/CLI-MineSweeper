@@ -5,7 +5,7 @@ internal enum CellKeys
   isBomb
 }
 
-internal class MineSweeperCamp
+internal class MineSweeper
 {
   private const CellKeys isRevealed = CellKeys.isRevealed;
   private const CellKeys isFlagged = CellKeys.isFlagged;
@@ -20,9 +20,9 @@ internal class MineSweeperCamp
 
   internal byte height;
   internal byte width;
-  internal bool[,,] field;
+  private bool[,,] field;
 
-  internal MineSweeperCamp(byte height, byte width)
+  internal MineSweeper(byte height, byte width)
   {
     field = new bool[height, width, 3];
     //bombas[y,x,0] = Revelado ou não
@@ -150,7 +150,7 @@ internal class MineSweeperCamp
     for (int i = 0; i < 50; i++)
     {
       Console.WriteLine('\n');
-    }
+    }  
   }
 
 
@@ -496,10 +496,10 @@ class Program
         break;
     }
 
-    MineSweeperCamp Camp = new(ysize, xsize);
+    MineSweeper Field = new(ysize, xsize);
 
-    Camp.SetupRdn(chance: 5);
-    Camp.Display();
+    Field.SetupRdn(chance: 5);
+    Field.Display();
 
     Console.Write("Digite as coordenadas para começar: ");
 
@@ -508,28 +508,28 @@ class Program
       string? input = Console.ReadLine()?.Trim();
       byte? length = (byte?)input?.Length;
 
-      ValueTuple<byte, byte>? Output = Camp.IsCodeValid(["\0", input is not null ? input : "\0"], bound:false);
+      ValueTuple<byte, byte>? Output = Field.IsCodeValid(["\0", input is not null ? input : "\0"], bound:false);
 
       if (Output is not null)
       {
         byte OutputY = Output.Value.Item1;
         byte OutputX = Output.Value.Item2;
 
-        if (Camp.IsInBounds(OutputY, OutputX))
+        if (Field.IsInBounds(OutputY, OutputX))
         {
-          Camp[OutputY, OutputX, isBomb] = false;
-          Camp[OutputY, OutputX, isRevealed] = true;
+          Field[OutputY, OutputX, isBomb] = false;
+          Field[OutputY, OutputX, isRevealed] = true;
 
           void Initiate(byte y, byte x)
           {
-            if (Camp.IsInBounds(y, x))
+            if (Field.IsInBounds(y, x))
             {
-              Camp[y, x, isBomb] = false;
-              Camp[y, x, isRevealed] = true;
+              Field[y, x, isBomb] = false;
+              Field[y, x, isRevealed] = true;
             }
           }
 
-          MineSweeperCamp.IterateNeighbor(OutputY, OutputX, Initiate);
+          MineSweeper.IterateNeighbor(OutputY, OutputX, Initiate);
           break;
         }
         else
@@ -544,14 +544,14 @@ class Program
 
       Console.Write("Tente denovo: ");
     }
-    Camp.FloodFillLoop();
-    Camp.Display();
+    Field.FloodFillLoop();
+    Field.Display();
 
     Console.WriteLine("O jogo começou, use 'help' para ver a lista de comandos.");
 
     while (true)
     {
-      Camp.Action();
+      Field.Action();
     }
   }
 
