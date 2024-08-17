@@ -498,7 +498,7 @@ class Program
 
     MineSweeperCamp Camp = new(ysize, xsize);
 
-    Camp.SetupRdn(chance: 3);
+    Camp.SetupRdn(chance: 5);
     Camp.Display();
 
     Console.Write("Digite as coordenadas para começar: ");
