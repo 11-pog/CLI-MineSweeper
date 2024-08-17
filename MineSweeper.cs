@@ -54,7 +54,7 @@ internal class MineSweeper
   }
 
 
-  internal static void IterateNeighbor(ValueTuple<byte, byte> Coords, Action<byte, byte> Act, bool WithCenter = true)
+  internal static void IterateNeighbor((byte, byte) Coords, Action<byte, byte> Act, bool WithCenter = true)
   {
     byte nMax = (byte)(WithCenter ? 9 : 8);
     byte y = Coords.Item1;
@@ -92,7 +92,7 @@ internal class MineSweeper
   }
 
 
-  internal (byte, byte, byte) GetCellData(ValueTuple<byte, byte> coords)
+  internal (byte, byte, byte) GetCellData((byte, byte) coords)
   {
     byte OutOfBoundNeighbors = 0;
     byte RevealedNeighbors = 0;
@@ -141,7 +141,7 @@ internal class MineSweeper
   }
 
 
-  internal void Dig(ValueTuple<byte, byte> coords)
+  internal void Dig((byte, byte) coords)
   {
     byte x = coords.Item2;
     byte y = coords.Item1;
@@ -161,7 +161,7 @@ internal class MineSweeper
   }
 
 
-  internal void Flag(ValueTuple<byte, byte> coords)
+  internal void Flag((byte, byte) coords)
   {
     byte x = coords.Item2;
     byte y = coords.Item1;
@@ -237,9 +237,9 @@ internal class MineSweeper
   }
 
 
-  private bool CanReveal(ValueTuple<byte, byte> Coords, Action? Act = null)
+  private bool CanReveal((byte, byte) Coords, Action? Act = null)
   {
-    ValueTuple<byte, byte, byte> cellData = GetCellData(Coords);
+    (byte, byte, byte) cellData = GetCellData(Coords);
 
     bool hasNeighborBomb = cellData.Item1 != 0;
     byte OutOfBoundsNeighbor = cellData.Item2;
@@ -370,7 +370,7 @@ internal class MineSweeper
     });
   }
 
-  internal static void Perform(Action<(byte, byte)> action, ValueTuple<byte, byte>? coords)
+  internal static void Perform(Action<(byte, byte)> action, (byte, byte)? coords)
   {
     if (coords is not null)
     {
@@ -420,7 +420,7 @@ internal class MineSweeper
       return;
     }
 
-    ValueTuple<byte, byte>? coords = IsCodeValid(words);
+    (byte, byte)? coords = IsCodeValid(words);
 
     switch (words[0])
     {
@@ -567,7 +567,7 @@ class Program
       string? input = Console.ReadLine()?.Trim();
       byte? length = (byte?)input?.Length;
 
-      ValueTuple<byte, byte>? Output = Field.IsCodeValid(["\0", input is not null ? input : "\0"], bound: false);
+      (byte, byte)? Output = Field.IsCodeValid(["\0", input is not null ? input : "\0"], bound: false);
 
       if (Output is not null)
       {
