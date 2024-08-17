@@ -10,7 +10,6 @@ internal class MineSweeper
   protected const CellKeys isRevealed = CellKeys.isRevealed;
   protected const CellKeys isFlagged = CellKeys.isFlagged;
   protected const CellKeys isBomb = CellKeys.isBomb;
-  internal Random rdn = new();
   internal static readonly sbyte[,] surrounding = {
     { 1, 0 }, { 1, 1 }, { 0, 1 },
     { -1, 1 },            { -1, 0 },
