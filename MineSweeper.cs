@@ -1,5 +1,15 @@
+internal enum CellKeys
+{
+  isRevealed,
+  isFlagged,
+  isBomb
+}
+
 internal class MineSweeperCamp
 {
+  private const CellKeys isRevealed = CellKeys.isRevealed;
+  private const CellKeys isFlagged = CellKeys.isFlagged;
+  private const CellKeys isBomb = CellKeys.isBomb;
   internal Random rdn = new();
   internal static readonly sbyte[,] surrounding = {
     { 1, 0 }, { 1, 1 }, { 0, 1 },
@@ -8,27 +18,34 @@ internal class MineSweeperCamp
     { 0, 0 }
   };
 
-  internal byte ysize;
-  internal byte xsize;
+  internal byte height;
+  internal byte width;
   internal bool[,,] field;
 
-  internal MineSweeperCamp(byte ysize, byte xsize)
+  internal MineSweeperCamp(byte height, byte width)
   {
-    field = new bool[ysize, xsize, 3];
+    field = new bool[height, width, 3];
     //bombas[y,x,0] = Revelado ou não
     //bombas[y,x,1] = Flagado ou não
     //bombas[y,x,2] = Bomba ou não
 
-    this.ysize = ysize;
-    this.xsize = xsize;
+    this.height = height;
+    this.width = width;
   }
 
 
-  internal void ForEachCell(Action<byte, byte> Act)
+  internal bool this[byte y, byte x, CellKeys key]
   {
-    for (byte y = 0; y < ysize; y++)
+    get => field[y, x, (int)key];
+    set => field[y, x, (int)key] = value;
+  }
+
+
+  internal void IterateAllCells(Action<byte, byte> Act)
+  {
+    for (byte y = 0; y < height; y++)
     {
-      for (byte x = 0; x < xsize; x++)
+      for (byte x = 0; x < width; x++)
       {
         Act(y, x);
       }
@@ -36,7 +53,7 @@ internal class MineSweeperCamp
   }
 
 
-  internal void ForEachNeighbor(byte y, byte x, Action<byte, byte> Act)
+  internal static void IterateNeighbor(byte y, byte x, Action<byte, byte> Act)
   {
     for (byte n = 0; n < 9; n++)
     {
@@ -59,25 +76,34 @@ internal class MineSweeperCamp
     return (byte)(x + surrounding[n, 1]);
   }
 
-  internal byte[] GetCellData(byte y, byte x)
+  internal bool IsInBounds(byte Y, byte X)
+  {
+    if (Y < height && X < width)
+    {
+      return true;
+    }
+    return false;
+  }
+
+  internal (byte, byte, byte) GetCellData(ValueTuple<byte, byte> coords)
   {
     byte OutOfBoundNeighbors = 0;
     byte RevealedNeighbors = 0;
     byte NeighborBombs = 0;
 
-    for (byte n = 0; n < 8; n++)
-    {
-      byte offsety = GetOffsetY(y, n);
-      byte offsetx = GetOffsetX(x, n);
+    byte y = coords.Item1;
+    byte x = coords.Item2;
 
-      if (offsety < ysize && offsetx < xsize)
+    void ForEachNeighbor(byte NewY, byte NewX)
+    {
+      if (IsInBounds(NewY, NewX))
       {
-        if (field[offsety, offsetx, 0] == true)
+        if (this[NewY, NewX, isRevealed])
         {
           RevealedNeighbors++;
         }
 
-        if (field[offsety, offsetx, 2] == true)
+        if (this[NewY, NewX, isBomb])
         {
           NeighborBombs++;
         }
@@ -88,7 +114,8 @@ internal class MineSweeperCamp
       }
     }
 
-    return [NeighborBombs, OutOfBoundNeighbors, RevealedNeighbors];
+    IterateNeighbor(y, x, ForEachNeighbor);
+    return (NeighborBombs, OutOfBoundNeighbors, RevealedNeighbors);
   }
 
 
@@ -96,38 +123,27 @@ internal class MineSweeperCamp
   {
     void PerformSetup(byte y, byte x)
     {
-      field[y, x, 0] = false;
-      field[y, x, 1] = false;
+      this[y, x, isRevealed] = false;
+      this[y, x, isFlagged] = false;
       if (rdn.Next(0, chance) == 0)
       {
-        field[y, x, 2] = true;
+        this[y, x, isBomb] = true;
       }
       else
       {
-        field[y, x, 2] = false;
+        this[y, x, isBomb] = false;
       }
     }
 
-    ForEachCell(PerformSetup);
+    IterateAllCells(PerformSetup);
   }
 
-  /*
-  internal static void SetupConway()
+
+  internal static void SetupNoGuessing(float Mod = 1.0f)
   {
-
+    //PlaceHolder
   }
 
-
-  internal void SetupPerlin()
-  {
-    void PerformSetup(byte y, byte x)
-    {
-      //int randomnumber = rdn.perlin
-    }
-
-    ForEachCell(PerformSetup);
-  }
-  */
 
   static void Clear()
   {
@@ -138,13 +154,16 @@ internal class MineSweeperCamp
   }
 
 
-  internal void Dig(byte y, byte x)
+  internal void Dig(ValueTuple<byte, byte> coords)
   {
-    if (field[y, x, 1] == false)
-    {
-      field[y, x, 0] = true;
+    byte x = coords.Item2;
+    byte y = coords.Item1;
 
-      IterateFloodFill();
+    if (!this[y, x, isFlagged])
+    {
+      this[y, x, isRevealed] = true;
+
+      FloodFillLoop();
       Display();
     }
     else
@@ -154,11 +173,14 @@ internal class MineSweeperCamp
   }
 
 
-  internal void Flag(byte y, byte x)
+  internal void Flag(ValueTuple<byte, byte> coords)
   {
-    if (field[y, x, 0] == false)
+    byte x = coords.Item2;
+    byte y = coords.Item1;
+
+    if (!this[y, x, isRevealed])
     {
-      field[y, x, 1] = !field[y, x, 1];
+      this[y, x, isFlagged] = !this[y, x, isFlagged];
 
       Display();
     }
@@ -175,14 +197,14 @@ internal class MineSweeperCamp
     Clear();
     Console.Write("\n   ");
 
-    for (byte x = 0; x < xsize; x++)
+    for (byte x = 0; x < width; x++)
     {
       Console.Write((char)(x + 65) + " ");
     }
 
     Console.Write("\n");
 
-    for (byte y = 0; y < ysize; y++)
+    for (byte y = 0; y < height; y++)
     {
       if (y < 9)
       {
@@ -190,11 +212,11 @@ internal class MineSweeperCamp
       }
       Console.Write((y + 1) + "|");
 
-      for (byte x = 0; x < xsize; x++)
+      for (byte x = 0; x < width; x++)
       {
-        if (field[y, x, 0] == false)
+        if (!this[y, x, isRevealed])
         {
-          if (field[y, x, 1])
+          if (this[y, x, isFlagged])
           {
             Console.Write("# ");
           }
@@ -203,13 +225,13 @@ internal class MineSweeperCamp
             Console.Write("O ");
           }
         }
-        else if (field[y, x, 2])
+        else if (this[y, x, isBomb])
         {
           Console.Write("* ");
         }
         else
         {
-          byte bombcount = GetCellData(y, x)[0];
+          byte bombcount = GetCellData((y, x)).Item1;
 
           if (bombcount > 0)
           {
@@ -219,9 +241,7 @@ internal class MineSweeperCamp
           {
             Console.Write("  ");
           }
-
         }
-
       }
 
       Console.Write("\n");
@@ -229,82 +249,84 @@ internal class MineSweeperCamp
   }
 
 
-  internal void BFSFloodFill()
+  private void IsRevealable(Action Act, ValueTuple<byte, byte> Coords)
   {
-    void Reveal(byte y, byte x)
+    ValueTuple<byte, byte, byte> cellData = GetCellData(Coords);
+
+    bool hasNeighborBomb = cellData.Item1 != 0;
+    byte OutOfBoundsNeighbor = cellData.Item2;
+    byte RevealedNeighbors = cellData.Item3;
+
+    if (!hasNeighborBomb && this[Coords.Item1, Coords.Item2, isRevealed] == true && ((RevealedNeighbors < 8 && OutOfBoundsNeighbor == 0)
+                                                                             || (RevealedNeighbors < 5 && OutOfBoundsNeighbor == 3)
+                                                                             || (RevealedNeighbors < 3 && OutOfBoundsNeighbor == 5)))
     {
-      if (y < ysize && x < xsize)
+      Act();
+    }
+  }
+
+
+  internal void FloodFillBFS()
+  {
+    Queue<(byte, byte)> queue = ProcessCell(true).Item2!;
+
+    do
+    {
+      //wip
+    } while (queue.Count > 0);
+  }
+
+
+  private (bool, Queue<(byte, byte)>?) ProcessCell(bool Enqueue = false)
+  {
+    bool didReveal = false;
+    Queue<(byte, byte)>? QueuedCoords = Enqueue ? new Queue<(byte, byte)>() : null;
+
+    void Check(byte y, byte x)
+    {
+      void Act()
       {
-        field[y, x, 0] = true;
+        didReveal = true;
+
+        IterateNeighbor(y, x, Expose);
+      }
+
+      IsRevealable(Act, (y, x));
+    }
+
+    void Expose(byte y, byte x)
+    {
+      if (y < height && x < width)
+      {
+        this[y, x, isRevealed] = true;
+
+        if (Enqueue) QueuedCoords!.Enqueue((y, x));
       }
     }
+
+    IterateAllCells(Check);
+
+    if (Enqueue)
+    {
+      return (didReveal, QueuedCoords);
+    }
+
+    return (didReveal, null);
+  }
+
+
+  internal void FloodFillLoop()
+  {
     bool repeat;
 
     do
     {
-      repeat = false;
-      for (byte y = 0; y < ysize; y++)
-      {
-        for (byte x = 0; x < xsize; x++)
-        {
-          byte[] cellData = GetCellData(y, x);
-
-          bool hasNeighborBomb = cellData[0] != 0;
-          byte OutOfBoundsNeighbor = cellData[1];
-          byte RevealedNeighbors = cellData[2];
-
-          if (!hasNeighborBomb && field[y, x, 0] == true && ((RevealedNeighbors < 8 &&
-          OutOfBoundsNeighbor == 0) || (RevealedNeighbors < 5 && OutOfBoundsNeighbor == 3) ||
-          (RevealedNeighbors < 3 && OutOfBoundsNeighbor == 5)))
-          {
-            repeat = true;
-            ForEachNeighbor(y, x, Reveal);
-          }
-        }
-      }
+      repeat = ProcessCell().Item1;
     } while (repeat);
   }
 
 
-  internal void IterateFloodFill()
-  {
-    void Reveal(byte y, byte x)
-    {
-      if (y < ysize && x < xsize)
-      {
-        field[y, x, 0] = true;
-      }
-    }
-    bool repeat;
-
-    do
-    {
-      repeat = false;
-      for (byte y = 0; y < ysize; y++)
-      {
-        for (byte x = 0; x < xsize; x++)
-        {
-          byte[] cellData = GetCellData(y, x);
-
-          bool hasNeighborBomb = cellData[0] != 0;
-          byte OutOfBoundsNeighbor = cellData[1];
-          byte RevealedNeighbors = cellData[2];
-
-          if (!hasNeighborBomb && field[y, x, 0] == true && ((RevealedNeighbors < 8 &&
-          OutOfBoundsNeighbor == 0) || (RevealedNeighbors < 5 && OutOfBoundsNeighbor == 3) ||
-          (RevealedNeighbors < 3 && OutOfBoundsNeighbor == 5)))
-          {
-            repeat = true;
-            ForEachNeighbor(y, x, Reveal);
-          }
-        }
-      }
-    } while (repeat);
-  }
-
-
-
-  internal byte[]? IsCodeValid(string[] input)
+  internal (byte, byte)? IsCodeValid(string[]? input, bool bound = true)
   {
     if (input != null && input.Length > 1 && !string.IsNullOrEmpty(input[1]))
     {
@@ -320,9 +342,10 @@ internal class MineSweeperCamp
         if (char.IsLetter(y) && (char.IsDigit(x) && length == 2 || (char.IsDigit(x) && char.IsDigit(x2))))
         {
           byte[] coords = CodeToCoordConverter(code);
-          if (coords[0] <= (ysize - 1) && coords[1] <= (xsize - 1))
+
+          if (IsInBounds(coords[0], coords[1]) || !bound)
           {
-            return [coords[0], coords[1]];
+            return (coords[0], coords[1]);
           }
         }
       }
@@ -332,11 +355,11 @@ internal class MineSweeperCamp
   }
 
 
-  internal static void Perform(Action<byte, byte> action, byte[]? coords)
+  internal static void Perform(Action<(byte, byte)> action, ValueTuple<byte, byte>? coords)
   {
     if (coords is not null)
     {
-      action(coords[0], coords[1]);
+      action(coords.Value);
       return;
     }
     else
@@ -350,13 +373,15 @@ internal class MineSweeperCamp
     string input = code;
     input = input.Trim();
     input = input.ToLower();
-    string xstrcoord = input.Substring(0, 1);
-    string ystrcoord = input.Substring(1);
+
+    string ystrcoord = input[1..];
+    string xstrcoord = input[..1];
+
     char xcharcoord = Convert.ToChar(xstrcoord);
     int xcoord = xcharcoord - 97;
     int ycoord = Convert.ToInt32(ystrcoord) - 1;
 
-    byte[] output = { (byte)ycoord, (byte)xcoord };
+    byte[] output = [(byte)ycoord, (byte)xcoord];
     return output;
   }
 
@@ -380,7 +405,7 @@ internal class MineSweeperCamp
       return;
     }
 
-    byte[]? coords = IsCodeValid(words);
+    ValueTuple<byte, byte>? coords = IsCodeValid(words);
 
     switch (words[0])
     {
@@ -432,6 +457,9 @@ internal class MineSweeperCamp
 
 class Program
 {
+  private const CellKeys isRevealed = CellKeys.isRevealed;
+  private const CellKeys isFlagged = CellKeys.isFlagged;
+  private const CellKeys isBomb = CellKeys.isBomb;
   static void Main()
   {
     Console.WriteLine("           ---MINESWEEPER---\nCampo minado so que NO TERMINAL AAHAHHAHHHA");
@@ -470,49 +498,43 @@ class Program
 
     MineSweeperCamp Camp = new(ysize, xsize);
 
-    Camp.SetupRdn();
+    Camp.SetupRdn(chance: 3);
     Camp.Display();
 
     Console.Write("Digite as coordenadas para começar: ");
 
-    do
+    while (true)
     {
       string? input = Console.ReadLine()?.Trim();
       byte? length = (byte?)input?.Length;
 
-      if (input is not null && (length == 2 || length == 3))
+      ValueTuple<byte, byte>? Output = Camp.IsCodeValid(["\0", input is not null ? input : "\0"], bound:false);
+
+      if (Output is not null)
       {
-        char y = input[0];
-        char x = input[1];
-        char x2 = (length == 3) ? input[2] : '\0';
+        byte OutputY = Output.Value.Item1;
+        byte OutputX = Output.Value.Item2;
 
-        if (char.IsLetter(y) && (char.IsDigit(x) && length == 2 || (char.IsDigit(x) && char.IsDigit(x2))))
+        if (Camp.IsInBounds(OutputY, OutputX))
         {
-          byte[] output = MineSweeperCamp.CodeToCoordConverter(input);
-          if (output[0] <= ysize - 1 && output[1] <= xsize - 1)
+          Camp[OutputY, OutputX, isBomb] = false;
+          Camp[OutputY, OutputX, isRevealed] = true;
+
+          void Initiate(byte y, byte x)
           {
-            Camp.field[output[0], output[1], 2] = false;
-            Camp.field[output[0], output[1], 0] = true;
-
-
-            for (byte i = 0; i < 8; i++)
+            if (Camp.IsInBounds(y, x))
             {
-              byte yoffset = (byte)(output[0] + MineSweeperCamp.surrounding[i, 0]);
-              byte xoffset = (byte)(output[1] + MineSweeperCamp.surrounding[i, 1]);
-
-              if (yoffset < ysize && xoffset < xsize)
-              {
-                Camp.field[yoffset, xoffset, 2] = false;
-                Camp.field[yoffset, xoffset, 0] = true;
-              }
+              Camp[y, x, isBomb] = false;
+              Camp[y, x, isRevealed] = true;
             }
-            break;
           }
-          Console.WriteLine("Oops, parece que a coordenada que você entrou esta fora da area do jogo.");
+
+          MineSweeperCamp.IterateNeighbor(OutputY, OutputX, Initiate);
+          break;
         }
         else
         {
-          Console.WriteLine("Oops, pareçe que você entrou com uma coordenada invalida, faça questão de escrever nesse formato: A1, B2, C27, etc (não é case sensitive).");
+          Console.WriteLine("Oops, parece que a coordenada que você entrou esta fora da area do jogo.");
         }
       }
       else
@@ -521,9 +543,8 @@ class Program
       }
 
       Console.Write("Tente denovo: ");
-    } while (true);
-
-    Camp.IterateFloodFill();
+    }
+    Camp.FloodFillLoop();
     Camp.Display();
 
     Console.WriteLine("O jogo começou, use 'help' para ver a lista de comandos.");
