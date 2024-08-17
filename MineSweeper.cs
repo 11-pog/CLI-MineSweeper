@@ -21,6 +21,8 @@ internal class MineSweeper
   internal byte width;
   private bool[,,] field;
 
+  internal bool GameEnded = false;
+
   internal MineSweeper(byte height, byte width)
   {
     field = new bool[height, width, 3];
@@ -52,9 +54,11 @@ internal class MineSweeper
   }
 
 
-  internal static void IterateNeighbor(byte y, byte x, Action<byte, byte> Act, bool WithCenter = true)
+  internal static void IterateNeighbor(ValueTuple<byte, byte> Coords, Action<byte, byte> Act, bool WithCenter = true)
   {
     byte nMax = (byte)(WithCenter ? 9 : 8);
+    byte y = Coords.Item1;
+    byte x = Coords.Item2;
 
     for (byte n = 0; n < nMax; n++)
     {
@@ -97,7 +101,7 @@ internal class MineSweeper
     byte y = coords.Item1;
     byte x = coords.Item2;
 
-    IterateNeighbor(y, x, (NewY, NewX) =>
+    IterateNeighbor((y, x), (NewY, NewX) =>
     {
       if (IsInBounds(NewY, NewX))
       {
@@ -146,7 +150,8 @@ internal class MineSweeper
     {
       this[y, x, isRevealed] = true;
 
-      FloodFillLoop();
+      CheckForGameOver();
+      FloodFillBFS();
       Display();
     }
     else
@@ -232,7 +237,7 @@ internal class MineSweeper
   }
 
 
-  private bool IsRevealable(ValueTuple<byte, byte> Coords, Action? Act = null)
+  private bool CanReveal(ValueTuple<byte, byte> Coords, Action? Act = null)
   {
     ValueTuple<byte, byte, byte> cellData = GetCellData(Coords);
 
@@ -258,12 +263,22 @@ internal class MineSweeper
   {
     Queue<(byte, byte)> queue = ProcessCell(true).Item2!;
 
-    do
+    while (queue.Count > 0)
     {
       (byte, byte) currentCoords = queue.Dequeue();
 
-
-    } while (queue.Count > 0);
+      if (CanReveal(currentCoords))
+      {
+        IterateNeighbor(currentCoords, (y, x) =>
+        {
+          if (IsInBounds(y, x) && !this[y, x, isRevealed])
+          {
+            this[y, x, isRevealed] = true;
+            queue.Enqueue((y, x));
+          }
+        }, WithCenter: false);
+      }
+    }
   }
 
 
@@ -274,11 +289,11 @@ internal class MineSweeper
 
     IterateAllCells((y, x) =>
     {
-      IsRevealable((y, x), () =>
+      CanReveal((y, x), () =>
       {
         didReveal = true;
 
-        IterateNeighbor(y, x, Expose, WithCenter: false);
+        IterateNeighbor((y, x), Expose, WithCenter: false);
       });
     });
 
@@ -342,6 +357,18 @@ internal class MineSweeper
     return null;
   }
 
+
+  internal void CheckForGameOver()
+  {
+    IterateAllCells((y, x) =>
+    {
+      if (this[y, x, isRevealed] && this[y, x, isBomb])
+      {
+        GameEnded = true;
+        //Rudimentary implementation as of now
+      }
+    });
+  }
 
   internal static void Perform(Action<(byte, byte)> action, ValueTuple<byte, byte>? coords)
   {
@@ -494,39 +521,43 @@ class Program
 
     byte xsize = 16;
     byte ysize = 16;
+    byte difficulty = new();
 
     Console.WriteLine("Escolha o tamanho do campo:");
     Console.WriteLine("1 - Padrão (7x7)\n2 - Grande (16x16)\n3 - Personalizado");
 
     /*Lembretes:
     - POSSIBILIDADE - Lembrar de inverter as posições das letras e numeros 
-    - PRO FUTURO - Fazer perder o jogo quando revela uma bomba
     - PRO FUTURO - Fazer ganhar o jogo caso todas as bombas estiverem com bandeira
     */
 
-    switch (UserInput(1, 4, true))
+    switch (UserInput(1, 4))
     {
       case 1:
         xsize = 7;
         ysize = 7;
+        difficulty = 3;
         break;
 
       case 2:
         xsize = 16;
         ysize = 16;
+        difficulty = 8;
         break;
 
       case 3:
         Console.Write("Digite a largura do campo (de 7 até 26): "); //Pergunta o tamanho do campo
-        xsize = (byte)UserInput(7, 26, true);
+        xsize = (byte)UserInput(7, 26);
         Console.Write("Digite a altura do campo (de 7 até 26): "); //Pergunta o tamanho do campo
-        ysize = (byte)UserInput(7, 26, true);
+        ysize = (byte)UserInput(7, 26);
+
+        difficulty = (byte)Math.Max(3, (xsize + ysize) / 4 - Math.Abs((xsize - ysize) / 8));
         break;
     }
 
     MineSweeper Field = new(ysize, xsize);
 
-    Field.Setup.Random(chance:5);
+    Field.Setup.Random(chance: difficulty);
     Field.Display();
 
     Console.Write("Digite as coordenadas para começar: ");
@@ -545,25 +576,18 @@ class Program
 
         if (Field.IsInBounds(OutputY, OutputX))
         {
-          Field[OutputY, OutputX, isBomb] = false;
-          Field[OutputY, OutputX, isRevealed] = true;
-
-          void Initiate(byte y, byte x)
+          MineSweeper.IterateNeighbor((OutputY, OutputX), (y, x) =>
           {
             if (Field.IsInBounds(y, x))
             {
               Field[y, x, isBomb] = false;
               Field[y, x, isRevealed] = true;
             }
-          }
-
-          MineSweeper.IterateNeighbor(OutputY, OutputX, Initiate);
+          }, WithCenter: true);
           break;
         }
-        else
-        {
-          Console.WriteLine("Oops, parece que a coordenada que você entrou esta fora da area do jogo.");
-        }
+
+        Console.WriteLine("Oops, parece que a coordenada que você entrou esta fora da area do jogo.");
       }
       else
       {
@@ -572,7 +596,7 @@ class Program
 
       Console.Write("Tente denovo: ");
     }
-    Field.FloodFillLoop();
+    Field.FloodFillBFS();
     Field.Display();
 
     Console.WriteLine("O jogo começou, use 'help' para ver a lista de comandos.");
@@ -580,56 +604,51 @@ class Program
     while (true)
     {
       Field.Action();
+      if (Field.GameEnded)
+      {
+        break;
+      }
     }
+
+    Console.WriteLine("Boom");
+
+    Thread.Sleep(500);
+
+    Console.WriteLine("Perdeu");
+
+    Thread.Sleep(500);
   }
 
 
-
-  static int UserInput(int LowerBoundary = 0, int UpperBoundary = 5, bool ranged = false)
+  static int UserInput(int LowerBoundary = 0, int UpperBoundary = 0)
   {
-    if (ranged)
+    do
     {
-      do
+      Console.Write("\n");
+      if (int.TryParse(Console.ReadLine(), out int receivedNumber) == true)
       {
-        Console.Write("\n");
-        if (int.TryParse(Console.ReadLine(), out int receivedNumber) == true)
+        if (LowerBoundary == 0 && UpperBoundary == 0)
         {
+          return receivedNumber;
+        }
 
-          if (receivedNumber <= UpperBoundary
-            && receivedNumber >= LowerBoundary)
-          {
-            return receivedNumber;
-          }
-          else
-          {
-            Console.WriteLine
-              ("O numero que você digitou esta fora dos parametros especificados (entre "
-               + LowerBoundary + " e " + UpperBoundary + ").");
-            Console.Write("Por favor digite um numero dentro dos parametros: ");
-          }
-        }
-        else
-        {
-          Console.WriteLine
-            ("Você não entrou com um numero valido.");
-          Console.Write("Por favor entre com um numero valido: ");
-        }
-      } while (true);
-    }
-    else
-    {
-      do
-      {
-        if (int.TryParse(Console.ReadLine(), out int receivedNumber) == true)
+        if (receivedNumber <= UpperBoundary
+          && receivedNumber >= LowerBoundary)
         {
           return receivedNumber;
         }
         else
         {
-          Console.WriteLine("You did not input a valid number.");
-          Console.WriteLine("Please input a valid number.");
+          Console.WriteLine("O numero que você digitou esta fora dos parametros especificados (entre "
+             + LowerBoundary + " e " + UpperBoundary + ").");
+          Console.Write("Por favor digite um numero dentro dos parametros: ");
         }
-      } while (true);
-    }
+      }
+      else
+      {
+        Console.WriteLine("Você não entrou com um numero valido.");
+        Console.Write("Por favor entre com um numero valido: ");
+      }
+    } while (true);
   }
 }
