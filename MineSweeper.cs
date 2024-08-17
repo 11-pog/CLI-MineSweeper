@@ -7,9 +7,9 @@ internal enum CellKeys
 
 internal class MineSweeper
 {
-  private const CellKeys isRevealed = CellKeys.isRevealed;
-  private const CellKeys isFlagged = CellKeys.isFlagged;
-  private const CellKeys isBomb = CellKeys.isBomb;
+  protected const CellKeys isRevealed = CellKeys.isRevealed;
+  protected const CellKeys isFlagged = CellKeys.isFlagged;
+  protected const CellKeys isBomb = CellKeys.isBomb;
   internal Random rdn = new();
   internal static readonly sbyte[,] surrounding = {
     { 1, 0 }, { 1, 1 }, { 0, 1 },
@@ -53,9 +53,11 @@ internal class MineSweeper
   }
 
 
-  internal static void IterateNeighbor(byte y, byte x, Action<byte, byte> Act)
+  internal static void IterateNeighbor(byte y, byte x, Action<byte, byte> Act, bool WithCenter = true)
   {
-    for (byte n = 0; n < 9; n++)
+    byte nMax = (byte)(WithCenter ? 9 : 8);
+
+    for (byte n = 0; n < nMax; n++)
     {
       byte yoffset = GetOffsetY(y, n);
       byte xoffset = GetOffsetX(x, n);
@@ -76,6 +78,7 @@ internal class MineSweeper
     return (byte)(x + surrounding[n, 1]);
   }
 
+
   internal bool IsInBounds(byte Y, byte X)
   {
     if (Y < height && X < width)
@@ -84,6 +87,7 @@ internal class MineSweeper
     }
     return false;
   }
+
 
   internal (byte, byte, byte) GetCellData(ValueTuple<byte, byte> coords)
   {
@@ -94,7 +98,7 @@ internal class MineSweeper
     byte y = coords.Item1;
     byte x = coords.Item2;
 
-    void ForEachNeighbor(byte NewY, byte NewX)
+    IterateNeighbor(y, x, (NewY, NewX) =>
     {
       if (IsInBounds(NewY, NewX))
       {
@@ -112,45 +116,25 @@ internal class MineSweeper
       {
         OutOfBoundNeighbors++;
       }
-    }
+    }, WithCenter: false);
 
-    IterateNeighbor(y, x, ForEachNeighbor);
     return (NeighborBombs, OutOfBoundNeighbors, RevealedNeighbors);
-  }
-
-
-  internal void SetupRdn(byte chance = 20)
-  {
-    void PerformSetup(byte y, byte x)
-    {
-      this[y, x, isRevealed] = false;
-      this[y, x, isFlagged] = false;
-      if (rdn.Next(0, chance) == 0)
-      {
-        this[y, x, isBomb] = true;
-      }
-      else
-      {
-        this[y, x, isBomb] = false;
-      }
-    }
-
-    IterateAllCells(PerformSetup);
-  }
-
-
-  internal static void SetupNoGuessing(float Mod = 1.0f)
-  {
-    //PlaceHolder
   }
 
 
   static void Clear()
   {
-    for (int i = 0; i < 50; i++)
+    try
     {
-      Console.WriteLine('\n');
-    }  
+      Console.Clear();
+    }
+    catch
+    {
+      for (int i = 0; i < 50; i++)
+      {
+        Console.WriteLine('\n');
+      }
+    }
   }
 
 
@@ -249,7 +233,7 @@ internal class MineSweeper
   }
 
 
-  private void IsRevealable(Action Act, ValueTuple<byte, byte> Coords)
+  private bool IsRevealable(ValueTuple<byte, byte> Coords, Action? Act = null)
   {
     ValueTuple<byte, byte, byte> cellData = GetCellData(Coords);
 
@@ -261,8 +245,13 @@ internal class MineSweeper
                                                                              || (RevealedNeighbors < 5 && OutOfBoundsNeighbor == 3)
                                                                              || (RevealedNeighbors < 3 && OutOfBoundsNeighbor == 5)))
     {
-      Act();
+      if (Act is not null)
+      {
+        Act();
+      }
+      return true;
     }
+    return false;
   }
 
 
@@ -272,7 +261,9 @@ internal class MineSweeper
 
     do
     {
-      //wip
+      (byte, byte) currentCoords = queue.Dequeue();
+
+
     } while (queue.Count > 0);
   }
 
@@ -282,21 +273,19 @@ internal class MineSweeper
     bool didReveal = false;
     Queue<(byte, byte)>? QueuedCoords = Enqueue ? new Queue<(byte, byte)>() : null;
 
-    void Check(byte y, byte x)
+    IterateAllCells((y, x) =>
     {
-      void Act()
+      IsRevealable((y, x), () =>
       {
         didReveal = true;
 
-        IterateNeighbor(y, x, Expose);
-      }
-
-      IsRevealable(Act, (y, x));
-    }
+        IterateNeighbor(y, x, Expose, WithCenter: false);
+      });
+    });
 
     void Expose(byte y, byte x)
     {
-      if (y < height && x < width)
+      if (IsInBounds(y, x))
       {
         this[y, x, isRevealed] = true;
 
@@ -304,7 +293,7 @@ internal class MineSweeper
       }
     }
 
-    IterateAllCells(Check);
+
 
     if (Enqueue)
     {
@@ -451,8 +440,48 @@ internal class MineSweeper
         return;
     }
   }
-}
 
+
+  internal class SetupMethods
+  {
+    private readonly MineSweeper field;
+    private readonly Random rdn = new();
+    internal SetupMethods(MineSweeper field)
+    {
+      this.field = field;
+    }
+
+    internal void Random(byte chance = 6)
+    {
+      void PerformSetup(byte y, byte x)
+      {
+        field[y, x, isRevealed] = false;
+        field[y, x, isFlagged] = false;
+        if (rdn.Next(0, chance) == 0)
+        {
+          field[y, x, isBomb] = true;
+        }
+        else
+        {
+          field[y, x, isBomb] = false;
+        }
+      }
+
+      field.IterateAllCells(PerformSetup);
+    }
+
+
+    internal static void NoGuessing(float Mod = 1.0f)
+    {
+      //PlaceHolder
+    }
+
+    //Necessito de ideias pra setups diferentes
+  }
+
+
+  internal SetupMethods Setup => new(this);
+}
 
 
 class Program
@@ -498,7 +527,7 @@ class Program
 
     MineSweeper Field = new(ysize, xsize);
 
-    Field.SetupRdn(chance: 5);
+    Field.Setup.Random(chance:5);
     Field.Display();
 
     Console.Write("Digite as coordenadas para começar: ");
@@ -508,7 +537,7 @@ class Program
       string? input = Console.ReadLine()?.Trim();
       byte? length = (byte?)input?.Length;
 
-      ValueTuple<byte, byte>? Output = Field.IsCodeValid(["\0", input is not null ? input : "\0"], bound:false);
+      ValueTuple<byte, byte>? Output = Field.IsCodeValid(["\0", input is not null ? input : "\0"], bound: false);
 
       if (Output is not null)
       {
@@ -557,7 +586,7 @@ class Program
 
 
 
-  static int UserInput(int LowerBoundary, int UpperBoundary, bool ranged)
+  static int UserInput(int LowerBoundary = 0, int UpperBoundary = 5, bool ranged = false)
   {
     if (ranged)
     {
