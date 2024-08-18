@@ -11,9 +11,14 @@ internal class MineSweeper
   protected const CellKeys isFlagged = CellKeys.isFlagged;
   protected const CellKeys isBomb = CellKeys.isBomb;
   internal static readonly sbyte[,] surrounding = {
-    { 1, 0 }, { 1, 1 }, { 0, 1 },
-    { -1, 1 },            { -1, 0 },
-    { -1, -1 }, { 0, -1 }, { 1, -1 },
+    { 1, -1 },
+    { 1, 0 },
+    { 1, 1 },
+    { 0, 1 },
+    { -1, 1 },
+    { -1, 0 },
+    { -1, -1 },
+    { 0, -1 },
     { 0, 0 }
   };
 
@@ -54,7 +59,7 @@ internal class MineSweeper
   }
 
 
-  internal static void IterateNeighbor((byte, byte) Coords, Action<byte, byte> Act, bool WithCenter = true)
+  internal static void IterateNeighbor((byte, byte) Coords, Action<byte, byte, byte> Act, bool WithCenter = true)
   {
     byte nMax = (byte)(WithCenter ? 9 : 8);
     byte y = Coords.Item1;
@@ -65,7 +70,7 @@ internal class MineSweeper
       byte yoffset = GetOffsetY(y, n);
       byte xoffset = GetOffsetX(x, n);
 
-      Act(yoffset, xoffset);
+      Act(yoffset, xoffset, n);
     }
   }
 
@@ -101,7 +106,7 @@ internal class MineSweeper
     byte y = coords.Item1;
     byte x = coords.Item2;
 
-    IterateNeighbor((y, x), (NewY, NewX) =>
+    IterateNeighbor((y, x), (NewY, NewX, _) =>
     {
       if (IsInBounds(NewY, NewX))
       {
@@ -269,7 +274,7 @@ internal class MineSweeper
 
       if (CanReveal(currentCoords))
       {
-        IterateNeighbor(currentCoords, (y, x) =>
+        IterateNeighbor(currentCoords, (y, x, _) =>
         {
           if (IsInBounds(y, x) && !this[y, x, isRevealed])
           {
@@ -293,7 +298,7 @@ internal class MineSweeper
       {
         didReveal = true;
 
-        IterateNeighbor((y, x), Expose, WithCenter: false);
+        IterateNeighbor((y, x), (y, x, n) => { Expose(y, x); }, WithCenter: false);
       });
     });
 
@@ -470,34 +475,86 @@ internal class MineSweeper
 
   internal class SetupMethods
   {
-    private readonly MineSweeper field;
+    private readonly MineSweeper parent;
     private readonly Random rdn = new();
-    internal SetupMethods(MineSweeper field)
+    internal SetupMethods(MineSweeper parent)
     {
-      this.field = field;
+      this.parent = parent;
     }
 
     internal void Random(byte chance = 6)
     {
       void PerformSetup(byte y, byte x)
       {
-        field[y, x, isRevealed] = false;
-        field[y, x, isFlagged] = false;
+        parent[y, x, isRevealed] = true;
+        parent[y, x, isFlagged] = false;
         if (rdn.Next(0, chance) == 0)
         {
-          field[y, x, isBomb] = true;
+          parent[y, x, isBomb] = true;
         }
         else
         {
-          field[y, x, isBomb] = false;
+          parent[y, x, isBomb] = false;
         }
       }
 
-      field.IterateAllCells(PerformSetup);
+      parent.IterateAllCells(PerformSetup);
     }
 
 
-    internal static void NoGuessing(float Mod = 1.0f)
+    private void RefinementStep()
+    {
+      parent.IterateAllCells((y, x) =>
+      {
+        (byte, byte, byte) CellData = parent.GetCellData((y, x));
+
+        byte NeighborBombs = CellData.Item1;
+        byte OutOfBoundNeighbors = CellData.Item2;
+
+        bool isEdge = OutOfBoundNeighbors == 3;
+        bool isCorner = OutOfBoundNeighbors == 5;
+
+
+        if (parent[y, x, isBomb] && (NeighborBombs == 8
+              || (NeighborBombs == 5 && isEdge)
+              || (NeighborBombs == 3 && isCorner)))
+        {
+          parent[y, x, isBomb] = false;
+        }
+
+
+        if ((NeighborBombs == 7 && rdn.NextSingle() <= 0.4f) || (NeighborBombs == 8 && rdn.NextSingle() <= 0.9f))
+        {
+          byte amount = (byte)rdn.Next(1, 6);
+
+          byte startingPoint = (byte)rdn.Next(0, 4);
+          byte stoppingPoint = (byte)(startingPoint + amount);
+
+          IterateNeighbor((y, x), (y, x, n) =>
+          {
+            if (startingPoint <= n && n <= stoppingPoint && parent.IsInBounds(y, x))
+            {
+              parent[y, x, isBomb] = false;
+            }
+          });
+        }
+
+        // NECESSITO DE MAIS IDEIAS E CONDICOES PRA TENTAR DEIXAR MAIS LEGAL
+      });
+    }
+
+    internal void StrategicConway(byte chance)
+    {
+      Random(chance);
+      
+      for (byte i = 0; i < 2; i++)
+      {
+        RefinementStep();
+      }
+    }
+
+
+    internal void NoGuessing(float Mod = 1.0f)
     {
       //PlaceHolder
     }
@@ -557,7 +614,7 @@ class Program
 
     MineSweeper Field = new(ysize, xsize);
 
-    Field.Setup.Random(chance: difficulty);
+    Field.Setup.StrategicConway(chance: 1);
     Field.Display();
 
     Console.Write("Digite as coordenadas para começar: ");
@@ -576,7 +633,7 @@ class Program
 
         if (Field.IsInBounds(OutputY, OutputX))
         {
-          MineSweeper.IterateNeighbor((OutputY, OutputX), (y, x) =>
+          MineSweeper.IterateNeighbor((OutputY, OutputX), (y, x, _) =>
           {
             if (Field.IsInBounds(y, x))
             {
