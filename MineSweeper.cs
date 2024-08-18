@@ -486,7 +486,7 @@ internal class MineSweeper
     {
       void PerformSetup(byte y, byte x)
       {
-        parent[y, x, isRevealed] = true;
+        parent[y, x, isRevealed] = false;
         parent[y, x, isFlagged] = false;
         if (rdn.Next(0, chance) == 0)
         {
@@ -593,7 +593,7 @@ class Program
       case 1:
         xsize = 7;
         ysize = 7;
-        difficulty = 3;
+        difficulty = 2;
         break;
 
       case 2:
@@ -608,13 +608,13 @@ class Program
         Console.Write("Digite a altura do campo (de 7 até 26): "); //Pergunta o tamanho do campo
         ysize = (byte)UserInput(7, 26);
 
-        difficulty = (byte)Math.Max(3, (xsize + ysize) / 4 - Math.Abs((xsize - ysize) / 8));
+        difficulty = (byte)Math.Max(2, (xsize + ysize) / 5 - Math.Abs((xsize - ysize) / 8));
         break;
     }
 
     MineSweeper Field = new(ysize, xsize);
 
-    Field.Setup.StrategicConway(chance: 1);
+    Field.Setup.StrategicConway(chance: difficulty);
     Field.Display();
 
     Console.Write("Digite as coordenadas para começar: ");
