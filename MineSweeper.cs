@@ -10,7 +10,7 @@ internal class MineSweeper
   protected const CellKeys isRevealed = CellKeys.isRevealed;
   protected const CellKeys isFlagged = CellKeys.isFlagged;
   protected const CellKeys isBomb = CellKeys.isBomb;
-  internal static readonly sbyte[,] surrounding = {
+  internal static readonly sbyte[,] Surrounding3x3 = {
     { 1, -1 },
     { 1, 0 },
     { 1, 1 },
@@ -20,6 +20,26 @@ internal class MineSweeper
     { -1, -1 },
     { 0, -1 },
     { 0, 0 }
+  };
+
+  internal static readonly sbyte[,] Surrounding5x5 = {
+    {0, -2},
+    {-1, -2},
+    {-2, -2},
+    {-2, -1},
+    {-2, 0},
+    {-2, 1},
+    {-2, 2},
+    {-1, 2},
+    {0, 2},
+    {1, 2},
+    {2, 2},
+    {2, 1},
+    {2, 0},
+    {2, -1},
+    {2, -2},
+    {1, -2},
+    {0, 0}
   };
 
   internal byte height;
@@ -59,16 +79,17 @@ internal class MineSweeper
   }
 
 
-  internal void IterateNeighbor((byte, byte) Coords, Action<byte, byte, byte> Act, bool WithCenter = true, bool ExcludeOutOfBounds = true)
+  internal void IterateNeighbor((byte, byte) Coords, Action<byte, byte, byte> Act, bool WithCenter = true, bool ExcludeOutOfBounds = true, bool is5x5 = false)
   {
-    byte nMax = (byte)(WithCenter ? 9 : 8);
+    byte nForNeighbors = (byte)(is5x5 ? 16 : 8);
+    byte nMax = (byte)(WithCenter ? nForNeighbors + 1 : nForNeighbors);
     byte y = Coords.Item1;
     byte x = Coords.Item2;
 
     for (byte n = 0; n < nMax; n++)
     {
-      byte yoffset = GetOffsetY(y, n);
-      byte xoffset = GetOffsetX(x, n);
+      byte yoffset = GetOffsetY(y, n, is5x5);
+      byte xoffset = GetOffsetX(x, n, is5x5);
 
       if (IsInBounds(yoffset, xoffset) || !ExcludeOutOfBounds)
       {
@@ -78,15 +99,25 @@ internal class MineSweeper
   }
 
 
-  internal static byte GetOffsetY(byte y, byte n)
+  internal static byte GetOffsetY(byte y, byte n, bool is5x5)
   {
-    return (byte)(y + surrounding[n, 0]);
+    if (!is5x5)
+    {
+      return (byte)(y + Surrounding3x3[n, 0]);
+    }
+
+    return (byte)(y + Surrounding5x5[n, 0]);
   }
 
 
-  internal static byte GetOffsetX(byte x, byte n)
+  internal static byte GetOffsetX(byte x, byte n, bool is5x5)
   {
-    return (byte)(x + surrounding[n, 1]);
+    if (!is5x5)
+    {
+      return (byte)(x + Surrounding3x3[n, 1]);
+    }
+
+    return (byte)(x + Surrounding5x5[n, 1]);
   }
 
 
@@ -628,6 +659,7 @@ internal class MineSweeper
         {
           BombNeighborsInRdnRange((y, x), (1, 5), false);
         }
+
 
         // NECESSITO DE MAIS IDEIAS E CONDICOES PRA TENTAR DEIXAR MAIS LEGAL
       });
