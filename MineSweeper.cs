@@ -59,7 +59,7 @@ internal class MineSweeper
   }
 
 
-  internal static void IterateNeighbor((byte, byte) Coords, Action<byte, byte, byte> Act, bool WithCenter = true)
+  internal void IterateNeighbor((byte, byte) Coords, Action<byte, byte, byte> Act, bool WithCenter = true, bool ExcludeOutOfBounds = true)
   {
     byte nMax = (byte)(WithCenter ? 9 : 8);
     byte y = Coords.Item1;
@@ -70,7 +70,10 @@ internal class MineSweeper
       byte yoffset = GetOffsetY(y, n);
       byte xoffset = GetOffsetX(x, n);
 
-      Act(yoffset, xoffset, n);
+      if (IsInBounds(yoffset, xoffset) || !ExcludeOutOfBounds)
+      {
+        Act(yoffset, xoffset, n);
+      }
     }
   }
 
@@ -124,7 +127,7 @@ internal class MineSweeper
       {
         OutOfBoundNeighbors++;
       }
-    }, WithCenter: false);
+    }, WithCenter: false, ExcludeOutOfBounds: false);
 
     return (NeighborBombs, OutOfBoundNeighbors, RevealedNeighbors);
   }
@@ -203,7 +206,7 @@ internal class MineSweeper
       {
         Console.Write(" ");
       }
-      Console.Write((y + 1) + "|");
+      Console.Write(y + 1 + "|");
 
       for (byte x = 0; x < width; x++)
       {
@@ -276,7 +279,7 @@ internal class MineSweeper
       {
         IterateNeighbor(currentCoords, (y, x, _) =>
         {
-          if (IsInBounds(y, x) && !this[y, x, isRevealed])
+          if (!this[y, x, isRevealed])
           {
             this[y, x, isRevealed] = true;
             queue.Enqueue((y, x));
@@ -298,18 +301,15 @@ internal class MineSweeper
       {
         didReveal = true;
 
-        IterateNeighbor((y, x), (y, x, n) => { Expose(y, x); }, WithCenter: false);
+        IterateNeighbor((y, x), Expose, WithCenter: false);
       });
     });
 
-    void Expose(byte y, byte x)
+    void Expose(byte y, byte x, byte _)
     {
-      if (IsInBounds(y, x))
-      {
-        this[y, x, isRevealed] = true;
+      this[y, x, isRevealed] = true;
 
-        if (Enqueue) QueuedCoords!.Enqueue((y, x));
-      }
+      if (Enqueue) QueuedCoords!.Enqueue((y, x));
     }
 
 
@@ -370,6 +370,7 @@ internal class MineSweeper
       if (this[y, x, isRevealed] && this[y, x, isBomb])
       {
         GameEnded = true;
+        return;
         //Rudimentary implementation as of now
       }
     });
@@ -502,7 +503,93 @@ internal class MineSweeper
     }
 
 
-    private void RefinementStep()
+    internal class ConcentrationBased
+    {
+      private readonly MineSweeper parent;
+      private readonly SetupMethods Setup;
+      internal ConcentrationBased(SetupMethods Setup, MineSweeper parent)
+      {
+        this.Setup = Setup;
+        this.parent = parent;
+      }
+      private Queue<(byte, byte)> GetRandomPoints()
+      {
+        Queue<(byte, byte)> values = new();
+
+        //WIP
+
+        return values;
+      }
+
+
+      private void TestDisplay(double ToDisplay, ref byte? reference, byte y)
+      {
+        if (reference != y)
+        {
+          Console.Write("\n");
+          reference = y;
+          if (y < 9)
+          {
+            Console.Write(" ");
+          }
+          Console.Write(y + 1 + " -> ");
+        }
+
+        Console.Write($"{ToDisplay:F2} ");
+      }
+
+
+      private double GetGaussian((byte, byte) Coords, (byte, byte) Center, float mod)
+      {
+        byte y = Coords.Item1;
+        byte x = Coords.Item2;
+
+        byte CenterY = Center.Item1;
+        byte CenterX = Center.Item2;
+
+        return (double)Math.Exp(-(Math.Pow(x - CenterX, 2) / (2 * mod * mod) + Math.Pow(y - CenterY, 2) / (2 * mod * mod)));
+        // Variaveis usaveis aqui => Height, width, y, x...
+      }
+
+      internal void Gaussian((float, float)? mod = null)
+      {
+        mod ??= (1.2f, 1.6f);
+        byte? CurrentY = null;
+
+        Queue<(byte, byte)> Points = GetRandomPoints();
+
+        foreach (var Point in Points)
+        {
+          float RandomMod = (float)((Setup.rdn.NextDouble() * (mod.Value.Item2 - mod.Value.Item1)) + mod.Value.Item1);
+
+          parent.IterateAllCells((y, x) =>
+          {
+            double Concentration = GetGaussian((y, x), Point, RandomMod);
+
+            TestDisplay(Concentration, ref CurrentY, y);
+          });
+        }
+      }
+    }
+
+
+    private void BombNeighborsInRdnRange((byte, byte) Coords, (byte, byte) Range, bool? BombState = null)
+    {
+      byte amount = (byte)rdn.Next(Range.Item1, Range.Item2 + 1);
+
+      byte startingPoint = (byte)rdn.Next(0, 9 - Range.Item2);
+      byte stoppingPoint = (byte)(startingPoint + amount);
+
+      parent.IterateNeighbor(Coords, (y, x, n) =>
+      {
+        if (startingPoint <= n && n <= stoppingPoint)
+        {
+          parent[y, x, isBomb] = BombState ?? rdn.NextSingle() > 0.5f;
+        }
+      });
+    }
+
+    private void ConwayStep()
     {
       parent.IterateAllCells((y, x) =>
       {
@@ -522,34 +609,29 @@ internal class MineSweeper
           parent[y, x, isBomb] = false;
         }
 
+        if ((isEdge && rdn.NextSingle() <= 0.2f)
+              || (isCorner && rdn.NextSingle() <= 0.4f))
+        {
+          parent[y, x, isBomb] = false;
+        }
 
         if ((NeighborBombs == 7 && rdn.NextSingle() <= 0.4f) || (NeighborBombs == 8 && rdn.NextSingle() <= 0.9f))
         {
-          byte amount = (byte)rdn.Next(1, 6);
-
-          byte startingPoint = (byte)rdn.Next(0, 4);
-          byte stoppingPoint = (byte)(startingPoint + amount);
-
-          IterateNeighbor((y, x), (y, x, n) =>
-          {
-            if (startingPoint <= n && n <= stoppingPoint && parent.IsInBounds(y, x))
-            {
-              parent[y, x, isBomb] = false;
-            }
-          });
+          BombNeighborsInRdnRange((y, x), (1, 5), false);
         }
 
         // NECESSITO DE MAIS IDEIAS E CONDICOES PRA TENTAR DEIXAR MAIS LEGAL
       });
     }
 
+
     internal void StrategicConway(byte chance)
     {
       Random(chance);
-      
+
       for (byte i = 0; i < 2; i++)
       {
-        RefinementStep();
+        ConwayStep();
       }
     }
 
@@ -557,9 +639,12 @@ internal class MineSweeper
     internal void NoGuessing(float Mod = 1.0f)
     {
       //PlaceHolder
+      //Literalmente a mais complicada de todas
     }
 
     //Necessito de ideias pra setups diferentes
+
+    internal ConcentrationBased Concentration => new(this, parent);
   }
 
 
@@ -614,8 +699,7 @@ class Program
 
     MineSweeper Field = new(ysize, xsize);
 
-    Field.Setup.StrategicConway(chance: difficulty);
-    Field.Display();
+    Field.Setup.Concentration.Gaussian();
 
     Console.Write("Digite as coordenadas para começar: ");
 
@@ -633,14 +717,11 @@ class Program
 
         if (Field.IsInBounds(OutputY, OutputX))
         {
-          MineSweeper.IterateNeighbor((OutputY, OutputX), (y, x, _) =>
+          Field.IterateNeighbor((OutputY, OutputX), (y, x, _) =>
           {
-            if (Field.IsInBounds(y, x))
-            {
-              Field[y, x, isBomb] = false;
-              Field[y, x, isRevealed] = true;
-            }
-          }, WithCenter: true);
+            Field[y, x, isBomb] = false;
+            Field[y, x, isRevealed] = true;
+          });
           break;
         }
 
