@@ -267,38 +267,6 @@ internal class MineSweeper
   }
 
 
-  internal void FloodFillBFS((byte, byte)? startingPoint = null)
-  {
-    Queue<(byte, byte)> queue = new();
-
-    if (startingPoint is null)
-    {
-      queue = ProcessCell(true).Item2!;
-    }
-    else
-    {
-      queue.Enqueue(((byte, byte))startingPoint);
-    }
-
-    while (queue.Count > 0)
-    {
-      (byte, byte) currentCoords = queue.Dequeue();
-
-      if (CanReveal(currentCoords))
-      {
-        IterateNeighbor(currentCoords, (y, x, _) =>
-        {
-          if (!this[y, x, isRevealed])
-          {
-            this[y, x, isRevealed] = true;
-            queue.Enqueue((y, x));
-          }
-        }, WithCenter: false);
-      }
-    }
-  }
-
-
   private (bool, Queue<(byte, byte)>?) ProcessCell(bool Enqueue = false)
   {
     bool didReveal = false;
@@ -329,6 +297,38 @@ internal class MineSweeper
     }
 
     return (didReveal, null);
+  }
+
+
+  internal void FloodFillBFS((byte, byte)? startingPoint = null)
+  {
+    Queue<(byte, byte)> queue = new();
+
+    if (startingPoint is null)
+    {
+      queue = ProcessCell(true).Item2!;
+    }
+    else
+    {
+      queue.Enqueue(((byte, byte))startingPoint);
+    }
+
+    while (queue.Count > 0)
+    {
+      (byte, byte) currentCoords = queue.Dequeue();
+
+      if (CanReveal(currentCoords))
+      {
+        IterateNeighbor(currentCoords, (y, x, _) =>
+        {
+          if (!this[y, x, isRevealed])
+          {
+            this[y, x, isRevealed] = true;
+            queue.Enqueue((y, x));
+          }
+        }, WithCenter: false);
+      }
+    }
   }
 
 
