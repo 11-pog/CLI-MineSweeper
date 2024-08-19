@@ -156,7 +156,7 @@ internal class MineSweeper
       this[y, x, isRevealed] = true;
 
       CheckForGameOver();
-      FloodFillBFS();
+      FloodFillBFS((y, x));
       Display();
     }
     else
@@ -264,9 +264,18 @@ internal class MineSweeper
   }
 
 
-  internal void FloodFillBFS()
+  internal void FloodFillBFS((byte, byte)? startingPoint = null)
   {
-    Queue<(byte, byte)> queue = ProcessCell(true).Item2!;
+    Queue<(byte, byte)> queue = new();
+
+    if (startingPoint is null)
+    {
+      queue = ProcessCell(true).Item2!;
+    }
+    else
+    {
+      queue.Enqueue(((byte, byte))startingPoint);
+    }
 
     while (queue.Count > 0)
     {
@@ -546,7 +555,7 @@ internal class MineSweeper
     internal void StrategicConway(byte chance)
     {
       Random(chance);
-      
+
       for (byte i = 0; i < 2; i++)
       {
         RefinementStep();
