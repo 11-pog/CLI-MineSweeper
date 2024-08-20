@@ -131,7 +131,7 @@ internal class MineSweeper
   }
 
 
-  internal (byte, byte, byte) GetCellData((byte, byte) coords)
+  internal (byte, byte, byte) GetCellData((byte, byte) coords, bool is5x5 = false)
   {
     byte OutOfBoundNeighbors = 0;
     byte RevealedNeighbors = 0;
@@ -158,9 +158,22 @@ internal class MineSweeper
       {
         OutOfBoundNeighbors++;
       }
-    }, WithCenter: false, ExcludeOutOfBounds: false);
+    }, WithCenter: false, ExcludeOutOfBounds: false, is5x5:is5x5);
 
     return (NeighborBombs, OutOfBoundNeighbors, RevealedNeighbors);
+  }
+
+
+  internal (byte, byte, byte) GetDataAllIn5x5((byte, byte) Coords)
+  {
+    (byte, byte, byte) NeighborData3x3 = GetCellData(Coords, is5x5:false);
+    (byte, byte, byte) NeighborData5x5 = GetCellData(Coords, is5x5:true);
+
+    return (
+        (byte)(NeighborData3x3.Item1 + NeighborData5x5.Item1),
+        (byte)(NeighborData3x3.Item2 + NeighborData5x5.Item2),
+        (byte)(NeighborData3x3.Item3 + NeighborData5x5.Item3)
+    );
   }
 
 
@@ -613,11 +626,11 @@ internal class MineSweeper
     }
 
 
-    private void BombNeighborsInRdnRange((byte, byte) Coords, (byte, byte) Range, bool? BombState = null)
+    private void BombNeighborsInRdnRange((byte, byte) Coords, (byte, byte) Range, bool? BombState = null, bool is5x5 = false)
     {
       byte amount = (byte)rdn.Next(Range.Item1, Range.Item2 + 1);
 
-      byte startingPoint = (byte)rdn.Next(0, 9 - Range.Item2);
+      byte startingPoint = (byte)rdn.Next(0, (is5x5 ? 17 : 9) - Range.Item2);
       byte stoppingPoint = (byte)(startingPoint + amount);
 
       parent.IterateNeighbor(Coords, (y, x, n) =>
@@ -626,28 +639,33 @@ internal class MineSweeper
         {
           parent[y, x, isBomb] = BombState ?? rdn.NextSingle() > 0.5f;
         }
-      });
+      }, is5x5:is5x5);
     }
 
     private void ConwayStep()
     {
       parent.IterateAllCells((y, x) =>
       {
-        (byte, byte, byte) CellData = parent.GetCellData((y, x));
+        (byte, byte, byte) CellData3x3 = parent.GetCellData((y, x));
+        (byte, byte, byte) CellData5x5 = parent.GetDataAllIn5x5((y, x));
 
-        byte NeighborBombs = CellData.Item1;
-        byte OutOfBoundNeighbors = CellData.Item2;
+        byte NeighborBombs3x3 = CellData3x3.Item1;
+        byte OutOfBoundNeighbors3x3 = CellData3x3.Item2;
 
-        bool isEdge = OutOfBoundNeighbors == 3;
-        bool isCorner = OutOfBoundNeighbors == 5;
+        byte NeighborBombs5x5 = CellData5x5.Item1;
+        byte OutOfBoundNeighbors5x5 = CellData5x5.Item2;
+
+        bool isEdge = OutOfBoundNeighbors3x3 == 3;
+        bool isCorner = OutOfBoundNeighbors3x3 == 5;
 
 
-        if (parent[y, x, isBomb] && (NeighborBombs == 8
-              || (NeighborBombs == 5 && isEdge)
-              || (NeighborBombs == 3 && isCorner)))
+        if (parent[y, x, isBomb] && (NeighborBombs3x3 == 8
+              || (NeighborBombs3x3 == 5 && isEdge)
+              || (NeighborBombs3x3 == 3 && isCorner)))
         {
           parent[y, x, isBomb] = false;
         }
+
 
         if ((isEdge && rdn.NextSingle() <= 0.2f)
               || (isCorner && rdn.NextSingle() <= 0.4f))
@@ -655,13 +673,33 @@ internal class MineSweeper
           parent[y, x, isBomb] = false;
         }
 
-        if ((NeighborBombs == 7 && rdn.NextSingle() <= 0.4f) || (NeighborBombs == 8 && rdn.NextSingle() <= 0.9f))
+
+        if ((NeighborBombs3x3 == 7 && rdn.NextSingle() <= 0.4f) || (NeighborBombs3x3 == 8 && rdn.NextSingle() <= 0.9f))
         {
           BombNeighborsInRdnRange((y, x), (1, 5), false);
         }
 
 
-        // NECESSITO DE MAIS IDEIAS E CONDICOES PRA TENTAR DEIXAR MAIS LEGAL
+        if (NeighborBombs5x5 == 0 && rdn.NextSingle() <= 0.21f)
+        {
+          BombNeighborsInRdnRange((y, x), (2, 7), is5x5:false);
+
+          if (rdn.NextSingle() <= 0.38f)
+          {
+            BombNeighborsInRdnRange((y, x), (5, 12), is5x5:true);
+          }
+        }
+
+
+        if (NeighborBombs5x5 >= 14 && rdn.NextSingle() <= 0.26f)
+        {
+          parent.IterateNeighbor((y,x), (y, x, n) => {
+            if (rdn.Next(1, 17) == n)
+            {
+              BombNeighborsInRdnRange((y, x), (2, 8), is5x5:false);
+            }
+          }, is5x5:true);
+        }
       });
     }
 
@@ -740,7 +778,8 @@ class Program
 
     MineSweeper Field = new(ysize, xsize);
 
-    Field.Setup.Concentration.Gaussian();
+    Field.Setup.StrategicConway(chance: difficulty);
+    Field.Display();
 
     Console.Write("Digite as coordenadas para começar: ");
 
@@ -775,6 +814,7 @@ class Program
 
       Console.Write("Tente denovo: ");
     }
+
     Field.FloodFillBFS();
     Field.Display();
 

@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "D:\\Quase Importante\\Codegos\\CSharp\\CSharp-Playground\\MineSweeper\\MineSweeper.csproj": {}
+    "d:\\Quase Importante\\Codegos\\CSharp\\CSharp-Playground\\MineSweeper\\MineSweeper.csproj": {}
   },
   "projects": {
-    "D:\\Quase Importante\\Codegos\\CSharp\\CSharp-Playground\\MineSweeper\\MineSweeper.csproj": {
+    "d:\\Quase Importante\\Codegos\\CSharp\\CSharp-Playground\\MineSweeper\\MineSweeper.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\Quase Importante\\Codegos\\CSharp\\CSharp-Playground\\MineSweeper\\MineSweeper.csproj",
+        "projectUniqueName": "d:\\Quase Importante\\Codegos\\CSharp\\CSharp-Playground\\MineSweeper\\MineSweeper.csproj",
         "projectName": "MineSweeper",
-        "projectPath": "D:\\Quase Importante\\Codegos\\CSharp\\CSharp-Playground\\MineSweeper\\MineSweeper.csproj",
+        "projectPath": "d:\\Quase Importante\\Codegos\\CSharp\\CSharp-Playground\\MineSweeper\\MineSweeper.csproj",
         "packagesPath": "C:\\Users\\alves\\.nuget\\packages\\",
-        "outputPath": "D:\\Quase Importante\\Codegos\\CSharp\\CSharp-Playground\\MineSweeper\\obj\\",
+        "outputPath": "d:\\Quase Importante\\Codegos\\CSharp\\CSharp-Playground\\MineSweeper\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\alves\\AppData\\Roaming\\NuGet\\NuGet.Config"
