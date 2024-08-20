@@ -10,7 +10,7 @@ internal class MineSweeper
   protected const CellKeys isRevealed = CellKeys.isRevealed;
   protected const CellKeys isFlagged = CellKeys.isFlagged;
   protected const CellKeys isBomb = CellKeys.isBomb;
-  internal static readonly sbyte[,] surrounding = {
+  internal static readonly sbyte[,] Surrounding3x3 = {
     { 1, -1 },
     { 1, 0 },
     { 1, 1 },
@@ -20,6 +20,26 @@ internal class MineSweeper
     { -1, -1 },
     { 0, -1 },
     { 0, 0 }
+  };
+
+  internal static readonly sbyte[,] Surrounding5x5 = {
+    {0, -2},
+    {-1, -2},
+    {-2, -2},
+    {-2, -1},
+    {-2, 0},
+    {-2, 1},
+    {-2, 2},
+    {-1, 2},
+    {0, 2},
+    {1, 2},
+    {2, 2},
+    {2, 1},
+    {2, 0},
+    {2, -1},
+    {2, -2},
+    {1, -2},
+    {0, 0}
   };
 
   internal byte height;
@@ -59,31 +79,45 @@ internal class MineSweeper
   }
 
 
-  internal static void IterateNeighbor((byte, byte) Coords, Action<byte, byte, byte> Act, bool WithCenter = true)
+  internal void IterateNeighbor((byte, byte) Coords, Action<byte, byte, byte> Act, bool WithCenter = true, bool ExcludeOutOfBounds = true, bool is5x5 = false)
   {
-    byte nMax = (byte)(WithCenter ? 9 : 8);
+    byte nForNeighbors = (byte)(is5x5 ? 16 : 8);
+    byte nMax = (byte)(WithCenter ? nForNeighbors + 1 : nForNeighbors);
     byte y = Coords.Item1;
     byte x = Coords.Item2;
 
     for (byte n = 0; n < nMax; n++)
     {
-      byte yoffset = GetOffsetY(y, n);
-      byte xoffset = GetOffsetX(x, n);
+      byte yoffset = GetOffsetY(y, n, is5x5);
+      byte xoffset = GetOffsetX(x, n, is5x5);
 
-      Act(yoffset, xoffset, n);
+      if (IsInBounds(yoffset, xoffset) || !ExcludeOutOfBounds)
+      {
+        Act(yoffset, xoffset, n);
+      }
     }
   }
 
 
-  internal static byte GetOffsetY(byte y, byte n)
+  internal static byte GetOffsetY(byte y, byte n, bool is5x5)
   {
-    return (byte)(y + surrounding[n, 0]);
+    if (!is5x5)
+    {
+      return (byte)(y + Surrounding3x3[n, 0]);
+    }
+
+    return (byte)(y + Surrounding5x5[n, 0]);
   }
 
 
-  internal static byte GetOffsetX(byte x, byte n)
+  internal static byte GetOffsetX(byte x, byte n, bool is5x5)
   {
-    return (byte)(x + surrounding[n, 1]);
+    if (!is5x5)
+    {
+      return (byte)(x + Surrounding3x3[n, 1]);
+    }
+
+    return (byte)(x + Surrounding5x5[n, 1]);
   }
 
 
@@ -97,7 +131,7 @@ internal class MineSweeper
   }
 
 
-  internal (byte, byte, byte) GetCellData((byte, byte) coords)
+  internal (byte, byte, byte) GetCellData((byte, byte) coords, bool is5x5 = false)
   {
     byte OutOfBoundNeighbors = 0;
     byte RevealedNeighbors = 0;
@@ -124,9 +158,22 @@ internal class MineSweeper
       {
         OutOfBoundNeighbors++;
       }
-    }, WithCenter: false);
+    }, WithCenter: false, ExcludeOutOfBounds: false, is5x5:is5x5);
 
     return (NeighborBombs, OutOfBoundNeighbors, RevealedNeighbors);
+  }
+
+
+  internal (byte, byte, byte) GetDataAllIn5x5((byte, byte) Coords)
+  {
+    (byte, byte, byte) NeighborData3x3 = GetCellData(Coords, is5x5:false);
+    (byte, byte, byte) NeighborData5x5 = GetCellData(Coords, is5x5:true);
+
+    return (
+        (byte)(NeighborData3x3.Item1 + NeighborData5x5.Item1),
+        (byte)(NeighborData3x3.Item2 + NeighborData5x5.Item2),
+        (byte)(NeighborData3x3.Item3 + NeighborData5x5.Item3)
+    );
   }
 
 
@@ -203,7 +250,7 @@ internal class MineSweeper
       {
         Console.Write(" ");
       }
-      Console.Write((y + 1) + "|");
+      Console.Write(y + 1 + "|");
 
       for (byte x = 0; x < width; x++)
       {
@@ -264,6 +311,39 @@ internal class MineSweeper
   }
 
 
+  private (bool, Queue<(byte, byte)>?) ProcessCell(bool Enqueue = false)
+  {
+    bool didReveal = false;
+    Queue<(byte, byte)>? QueuedCoords = Enqueue ? new Queue<(byte, byte)>() : null;
+
+    IterateAllCells((y, x) =>
+    {
+      CanReveal((y, x), () =>
+      {
+        didReveal = true;
+
+        IterateNeighbor((y, x), Expose, WithCenter: false);
+      });
+    });
+
+    void Expose(byte y, byte x, byte _)
+    {
+      this[y, x, isRevealed] = true;
+
+      if (Enqueue) QueuedCoords!.Enqueue((y, x));
+    }
+
+
+
+    if (Enqueue)
+    {
+      return (didReveal, QueuedCoords);
+    }
+
+    return (didReveal, null);
+  }
+
+
   internal void FloodFillBFS((byte, byte)? startingPoint = null)
   {
     Queue<(byte, byte)> queue = new();
@@ -285,7 +365,7 @@ internal class MineSweeper
       {
         IterateNeighbor(currentCoords, (y, x, _) =>
         {
-          if (IsInBounds(y, x) && !this[y, x, isRevealed])
+          if (!this[y, x, isRevealed])
           {
             this[y, x, isRevealed] = true;
             queue.Enqueue((y, x));
@@ -293,42 +373,6 @@ internal class MineSweeper
         }, WithCenter: false);
       }
     }
-  }
-
-
-  private (bool, Queue<(byte, byte)>?) ProcessCell(bool Enqueue = false)
-  {
-    bool didReveal = false;
-    Queue<(byte, byte)>? QueuedCoords = Enqueue ? new Queue<(byte, byte)>() : null;
-
-    IterateAllCells((y, x) =>
-    {
-      CanReveal((y, x), () =>
-      {
-        didReveal = true;
-
-        IterateNeighbor((y, x), (y, x, n) => { Expose(y, x); }, WithCenter: false);
-      });
-    });
-
-    void Expose(byte y, byte x)
-    {
-      if (IsInBounds(y, x))
-      {
-        this[y, x, isRevealed] = true;
-
-        if (Enqueue) QueuedCoords!.Enqueue((y, x));
-      }
-    }
-
-
-
-    if (Enqueue)
-    {
-      return (didReveal, QueuedCoords);
-    }
-
-    return (didReveal, null);
   }
 
 
@@ -379,6 +423,7 @@ internal class MineSweeper
       if (this[y, x, isRevealed] && this[y, x, isBomb])
       {
         GameEnded = true;
+        return;
         //Rudimentary implementation as of now
       }
     });
@@ -511,46 +556,153 @@ internal class MineSweeper
     }
 
 
-    private void RefinementStep()
+    internal class ConcentrationBased
+    {
+      private readonly MineSweeper parent;
+      private readonly SetupMethods Setup;
+      internal ConcentrationBased(SetupMethods Setup, MineSweeper parent)
+      {
+        this.Setup = Setup;
+        this.parent = parent;
+      }
+      private Queue<(byte, byte)> GetRandomPoints()
+      {
+        Queue<(byte, byte)> values = new();
+
+        //WIP
+
+        return values;
+      }
+
+
+      private void TestDisplay(double ToDisplay, ref byte? reference, byte y)
+      {
+        if (reference != y)
+        {
+          Console.Write("\n");
+          reference = y;
+          if (y < 9)
+          {
+            Console.Write(" ");
+          }
+          Console.Write(y + 1 + " -> ");
+        }
+
+        Console.Write($"{ToDisplay:F2} ");
+      }
+
+
+      private double GetGaussian((byte, byte) Coords, (byte, byte) Center, float mod)
+      {
+        byte y = Coords.Item1;
+        byte x = Coords.Item2;
+
+        byte CenterY = Center.Item1;
+        byte CenterX = Center.Item2;
+
+        return (double)Math.Exp(-(Math.Pow(x - CenterX, 2) / (2 * mod * mod) + Math.Pow(y - CenterY, 2) / (2 * mod * mod)));
+        // Variaveis usaveis aqui => Height, width, y, x...
+      }
+
+      internal void Gaussian((float, float)? mod = null)
+      {
+        mod ??= (1.2f, 1.6f);
+        byte? CurrentY = null;
+
+        Queue<(byte, byte)> Points = GetRandomPoints();
+
+        foreach (var Point in Points)
+        {
+          float RandomMod = (float)((Setup.rdn.NextDouble() * (mod.Value.Item2 - mod.Value.Item1)) + mod.Value.Item1);
+
+          parent.IterateAllCells((y, x) =>
+          {
+            double Concentration = GetGaussian((y, x), Point, RandomMod);
+
+            TestDisplay(Concentration, ref CurrentY, y);
+          });
+        }
+      }
+    }
+
+
+    private void BombNeighborsInRdnRange((byte, byte) Coords, (byte, byte) Range, bool? BombState = null, bool is5x5 = false)
+    {
+      byte amount = (byte)rdn.Next(Range.Item1, Range.Item2 + 1);
+
+      byte startingPoint = (byte)rdn.Next(0, (is5x5 ? 17 : 9) - Range.Item2);
+      byte stoppingPoint = (byte)(startingPoint + amount);
+
+      parent.IterateNeighbor(Coords, (y, x, n) =>
+      {
+        if (startingPoint <= n && n <= stoppingPoint)
+        {
+          parent[y, x, isBomb] = BombState ?? rdn.NextSingle() > 0.5f;
+        }
+      }, is5x5:is5x5);
+    }
+
+    private void ConwayStep()
     {
       parent.IterateAllCells((y, x) =>
       {
-        (byte, byte, byte) CellData = parent.GetCellData((y, x));
+        (byte, byte, byte) CellData3x3 = parent.GetCellData((y, x));
+        (byte, byte, byte) CellData5x5 = parent.GetDataAllIn5x5((y, x));
 
-        byte NeighborBombs = CellData.Item1;
-        byte OutOfBoundNeighbors = CellData.Item2;
+        byte NeighborBombs3x3 = CellData3x3.Item1;
+        byte OutOfBoundNeighbors3x3 = CellData3x3.Item2;
 
-        bool isEdge = OutOfBoundNeighbors == 3;
-        bool isCorner = OutOfBoundNeighbors == 5;
+        byte NeighborBombs5x5 = CellData5x5.Item1;
+        byte OutOfBoundNeighbors5x5 = CellData5x5.Item2;
+
+        bool isEdge = OutOfBoundNeighbors3x3 == 3;
+        bool isCorner = OutOfBoundNeighbors3x3 == 5;
 
 
-        if (parent[y, x, isBomb] && (NeighborBombs == 8
-              || (NeighborBombs == 5 && isEdge)
-              || (NeighborBombs == 3 && isCorner)))
+        if (parent[y, x, isBomb] && (NeighborBombs3x3 == 8
+              || (NeighborBombs3x3 == 5 && isEdge)
+              || (NeighborBombs3x3 == 3 && isCorner)))
         {
           parent[y, x, isBomb] = false;
         }
 
 
-        if ((NeighborBombs == 7 && rdn.NextSingle() <= 0.4f) || (NeighborBombs == 8 && rdn.NextSingle() <= 0.9f))
+        if ((isEdge && rdn.NextSingle() <= 0.2f)
+              || (isCorner && rdn.NextSingle() <= 0.4f))
         {
-          byte amount = (byte)rdn.Next(1, 6);
-
-          byte startingPoint = (byte)rdn.Next(0, 4);
-          byte stoppingPoint = (byte)(startingPoint + amount);
-
-          IterateNeighbor((y, x), (y, x, n) =>
-          {
-            if (startingPoint <= n && n <= stoppingPoint && parent.IsInBounds(y, x))
-            {
-              parent[y, x, isBomb] = false;
-            }
-          });
+          parent[y, x, isBomb] = false;
         }
 
-        // NECESSITO DE MAIS IDEIAS E CONDICOES PRA TENTAR DEIXAR MAIS LEGAL
+
+        if ((NeighborBombs3x3 == 7 && rdn.NextSingle() <= 0.4f) || (NeighborBombs3x3 == 8 && rdn.NextSingle() <= 0.9f))
+        {
+          BombNeighborsInRdnRange((y, x), (1, 5), false);
+        }
+
+
+        if (NeighborBombs5x5 == 0 && rdn.NextSingle() <= 0.21f)
+        {
+          BombNeighborsInRdnRange((y, x), (2, 7), is5x5:false);
+
+          if (rdn.NextSingle() <= 0.38f)
+          {
+            BombNeighborsInRdnRange((y, x), (5, 12), is5x5:true);
+          }
+        }
+
+
+        if (NeighborBombs5x5 >= 14 && rdn.NextSingle() <= 0.26f)
+        {
+          parent.IterateNeighbor((y,x), (y, x, n) => {
+            if (rdn.Next(1, 17) == n)
+            {
+              BombNeighborsInRdnRange((y, x), (2, 8), is5x5:false);
+            }
+          }, is5x5:true);
+        }
       });
     }
+
 
     internal void StrategicConway(byte chance)
     {
@@ -558,7 +710,7 @@ internal class MineSweeper
 
       for (byte i = 0; i < 2; i++)
       {
-        RefinementStep();
+        ConwayStep();
       }
     }
 
@@ -566,9 +718,12 @@ internal class MineSweeper
     internal void NoGuessing(float Mod = 1.0f)
     {
       //PlaceHolder
+      //Literalmente a mais complicada de todas
     }
 
     //Necessito de ideias pra setups diferentes
+
+    internal ConcentrationBased Concentration => new(this, parent);
   }
 
 
@@ -642,14 +797,11 @@ class Program
 
         if (Field.IsInBounds(OutputY, OutputX))
         {
-          MineSweeper.IterateNeighbor((OutputY, OutputX), (y, x, _) =>
+          Field.IterateNeighbor((OutputY, OutputX), (y, x, _) =>
           {
-            if (Field.IsInBounds(y, x))
-            {
-              Field[y, x, isBomb] = false;
-              Field[y, x, isRevealed] = true;
-            }
-          }, WithCenter: true);
+            Field[y, x, isBomb] = false;
+            Field[y, x, isRevealed] = true;
+          });
           break;
         }
 
@@ -662,6 +814,7 @@ class Program
 
       Console.Write("Tente denovo: ");
     }
+
     Field.FloodFillBFS();
     Field.Display();
 
