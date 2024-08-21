@@ -642,7 +642,7 @@ internal class MineSweeper
       }, is5x5:is5x5);
     }
 
-    private void ConwayStep()
+    private void ConditionCollection()
     {
       parent.IterateAllCells((y, x) =>
       {
@@ -708,9 +708,9 @@ internal class MineSweeper
     {
       Random(chance);
 
-      for (byte i = 0; i < 2; i++)
+      for (byte i = 0; i < 3; i++)
       {
-        ConwayStep();
+        ConditionCollection();
       }
     }
 
