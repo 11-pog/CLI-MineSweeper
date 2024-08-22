@@ -88,8 +88,8 @@ internal class MineSweeper
 
     for (byte n = 0; n < nMax; n++)
     {
-      byte yoffset = GetOffsetY(y, n, is5x5);
-      byte xoffset = GetOffsetX(x, n, is5x5);
+      byte yoffset = GetOffset(y, n, 0, is5x5);
+      byte xoffset = GetOffset(x, n, 1, is5x5);
 
       if (IsInBounds(yoffset, xoffset) || !ExcludeOutOfBounds)
       {
@@ -99,25 +99,19 @@ internal class MineSweeper
   }
 
 
-  internal static byte GetOffsetY(byte y, byte n, bool is5x5)
+  internal static byte GetOffset(byte coord, byte n, byte YorX, bool is5x5 = false)
   {
-    if (!is5x5)
+    if (YorX != 0 || YorX != 1)
     {
-      return (byte)(y + Surrounding3x3[n, 0]);
+      throw new ArgumentOutOfRangeException("Invalid y or x value.");
     }
 
-    return (byte)(y + Surrounding5x5[n, 0]);
-  }
-
-
-  internal static byte GetOffsetX(byte x, byte n, bool is5x5)
-  {
     if (!is5x5)
     {
-      return (byte)(x + Surrounding3x3[n, 1]);
+      return (byte)(coord + Surrounding3x3[n, YorX]);
     }
 
-    return (byte)(x + Surrounding5x5[n, 1]);
+    return (byte)(coord + Surrounding5x5[n, YorX]);
   }
 
 
