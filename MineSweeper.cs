@@ -565,11 +565,15 @@ internal class MineSweeper
         this.Setup = Setup;
         this.parent = parent;
       }
-      private Queue<(byte, byte)> GetRandomPoints()
+
+
+
+      private Queue<(byte, byte)> GetRandomPoints((byte, byte) PointsAmountRdnRange)
       {
         Queue<(byte, byte)> values = new();
+        byte pointsAmount = rdn.Next(PointsAmountRdnRange.Item1, PointsAmountRdnRange.Item2)
 
-        //WIP
+        for (byte r = 0; i )
 
         return values;
       }
