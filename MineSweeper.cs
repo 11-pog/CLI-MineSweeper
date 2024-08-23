@@ -101,7 +101,7 @@ internal class MineSweeper
 
   internal static byte GetOffset(byte coord, byte n, byte YorX, bool is5x5 = false)
   {
-    if (YorX != 0 || YorX != 1)
+    if (YorX != 0 && YorX != 1)
     {
       throw new ArgumentOutOfRangeException("Invalid y or x value.");
     }
@@ -565,9 +565,12 @@ internal class MineSweeper
       private Queue<(byte, byte)> GetRandomPoints((byte, byte) PointsAmountRdnRange)
       {
         Queue<(byte, byte)> values = new();
-        byte pointsAmount = rdn.Next(PointsAmountRdnRange.Item1, PointsAmountRdnRange.Item2)
+        byte pointsAmount = (byte)Setup.rdn.Next(PointsAmountRdnRange.Item1, PointsAmountRdnRange.Item2);
 
-        for (byte r = 0; i )
+        for (byte r = 0; r <= pointsAmount; r++)
+        {
+          values.Enqueue(((byte, byte))(Setup.rdn.Next(0, parent.height), Setup.rdn.Next(0, parent.width)));
+        }
 
         return values;
       }
@@ -599,15 +602,18 @@ internal class MineSweeper
         byte CenterX = Center.Item2;
 
         return (double)Math.Exp(-(Math.Pow(x - CenterX, 2) / (2 * mod * mod) + Math.Pow(y - CenterY, 2) / (2 * mod * mod)));
-        // Variaveis usaveis aqui => Height, width, y, x...
       }
+
 
       internal void Gaussian((float, float)? mod = null)
       {
         mod ??= (1.2f, 1.6f);
         byte? CurrentY = null;
 
-        Queue<(byte, byte)> Points = GetRandomPoints();
+        byte PointsAmount = (byte)((parent.height + parent.width)/2);
+        Queue<(byte, byte)> Points = GetRandomPoints(((byte, byte))(PointsAmount-3, PointsAmount+5));
+
+        //float[,] AccumulatedConcentrations;
 
         foreach (var Point in Points)
         {
@@ -619,6 +625,8 @@ internal class MineSweeper
 
             TestDisplay(Concentration, ref CurrentY, y);
           });
+
+          Console.Write('\n');
         }
       }
     }
@@ -776,7 +784,7 @@ class Program
 
     MineSweeper Field = new(ysize, xsize);
 
-    Field.Setup.StrategicConway(chance: difficulty);
+    Field.Setup.Concentration.Gaussian();
     Field.Display();
 
     Console.Write("Digite as coordenadas para começar: ");
