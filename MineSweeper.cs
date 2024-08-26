@@ -152,7 +152,7 @@ internal class MineSweeper
       {
         OutOfBoundNeighbors++;
       }
-    }, WithCenter: false, ExcludeOutOfBounds: false, is5x5:is5x5);
+    }, WithCenter: false, ExcludeOutOfBounds: false, is5x5: is5x5);
 
     return (NeighborBombs, OutOfBoundNeighbors, RevealedNeighbors);
   }
@@ -160,8 +160,8 @@ internal class MineSweeper
 
   internal (byte, byte, byte) GetDataAllIn5x5((byte, byte) Coords)
   {
-    (byte, byte, byte) NeighborData3x3 = GetCellData(Coords, is5x5:false);
-    (byte, byte, byte) NeighborData5x5 = GetCellData(Coords, is5x5:true);
+    (byte, byte, byte) NeighborData3x3 = GetCellData(Coords, is5x5: false);
+    (byte, byte, byte) NeighborData5x5 = GetCellData(Coords, is5x5: true);
 
     return (
         (byte)(NeighborData3x3.Item1 + NeighborData5x5.Item1),
@@ -530,23 +530,34 @@ internal class MineSweeper
       this.parent = parent;
     }
 
-    internal void Random(byte chance = 6)
-    {
-      void PerformSetup(byte y, byte x)
-      {
-        parent[y, x, isRevealed] = false;
-        parent[y, x, isFlagged] = false;
-        if (rdn.Next(0, chance) == 0)
-        {
-          parent[y, x, isBomb] = true;
-        }
-        else
-        {
-          parent[y, x, isBomb] = false;
-        }
-      }
 
-      parent.IterateAllCells(PerformSetup);
+    protected void SingleRandom((byte, byte) Coords, float chance)
+    {
+      byte y = Coords.Item1;
+      byte x = Coords.Item2;
+
+      parent[y, x, isRevealed] = true;
+      parent[y, x, isFlagged] = false;
+
+      if (rdn.NextSingle() <= chance)
+      {
+        parent[y, x, isBomb] = true;
+      }
+      else
+      {
+        parent[y, x, isBomb] = false;
+      }
+    }
+
+
+    internal void Random(byte chance)
+    {
+      float fChance = 1 / chance;
+
+      parent.IterateAllCells((y, x) =>
+      {
+        SingleRandom((y, x), fChance);
+      });
     }
 
 
@@ -576,7 +587,7 @@ internal class MineSweeper
       }
 
 
-      private void TestDisplay(double ToDisplay, ref byte? reference, byte y)
+      private static void TestDisplay(float ToDisplay, ref byte? reference, byte y)
       {
         if (reference != y)
         {
@@ -593,7 +604,7 @@ internal class MineSweeper
       }
 
 
-      private double GetGaussian((byte, byte) Coords, (byte, byte) Center, float mod)
+      private static float GetGaussian((byte, byte) Coords, (byte, byte) Center, float mod)
       {
         byte y = Coords.Item1;
         byte x = Coords.Item2;
@@ -601,19 +612,19 @@ internal class MineSweeper
         byte CenterY = Center.Item1;
         byte CenterX = Center.Item2;
 
-        return (double)Math.Exp(-(Math.Pow(x - CenterX, 2) / (2 * mod * mod) + Math.Pow(y - CenterY, 2) / (2 * mod * mod)));
+        return (float)Math.Exp(-(Math.Pow(x - CenterX, 2) / (2 * mod * mod) + Math.Pow(y - CenterY, 2) / (2 * mod * mod)));
       }
 
-
+      
       internal void Gaussian((float, float)? mod = null)
       {
         mod ??= (1.2f, 1.6f);
         byte? CurrentY = null;
 
-        byte PointsAmount = (byte)((parent.height + parent.width)/2);
-        Queue<(byte, byte)> Points = GetRandomPoints(((byte, byte))(PointsAmount-3, PointsAmount+5));
+        byte PointsAmount = (byte)((parent.height + parent.width) / 2);
+        Queue<(byte, byte)> Points = GetRandomPoints(((byte, byte))(PointsAmount - 3, PointsAmount + 5));
 
-        //float[,] AccumulatedConcentrations;
+        float[,] AccumulatedConcentrations = new float[parent.height, parent.width];
 
         foreach (var Point in Points)
         {
@@ -621,13 +632,23 @@ internal class MineSweeper
 
           parent.IterateAllCells((y, x) =>
           {
-            double Concentration = GetGaussian((y, x), Point, RandomMod);
+            float Concentration = GetGaussian((y, x), Point, RandomMod);
 
+            AccumulatedConcentrations[y, x] += Concentration;
             TestDisplay(Concentration, ref CurrentY, y);
           });
 
           Console.Write('\n');
         }
+
+        CurrentY = null;
+
+        parent.IterateAllCells((y, x) =>
+        {
+          AccumulatedConcentrations[y, x] = Math.Clamp(AccumulatedConcentrations[y, x] / 2, 0, 1);
+          TestDisplay(AccumulatedConcentrations[y, x], ref CurrentY, y);
+          Setup.SingleRandom((y, x), AccumulatedConcentrations[y, x]);
+        });
       }
     }
 
@@ -645,10 +666,11 @@ internal class MineSweeper
         {
           parent[y, x, isBomb] = BombState ?? rdn.NextSingle() > 0.5f;
         }
-      }, is5x5:is5x5);
+      }, is5x5: is5x5);
     }
 
-    private void ConditionCollection()
+
+    internal void ConditionCollection()
     {
       parent.IterateAllCells((y, x) =>
       {
@@ -688,29 +710,30 @@ internal class MineSweeper
 
         if (NeighborBombs5x5 == 0 && rdn.NextSingle() <= 0.21f)
         {
-          BombNeighborsInRdnRange((y, x), (2, 7), is5x5:false);
+          BombNeighborsInRdnRange((y, x), (2, 7), is5x5: false);
 
           if (rdn.NextSingle() <= 0.38f)
           {
-            BombNeighborsInRdnRange((y, x), (5, 12), is5x5:true);
+            BombNeighborsInRdnRange((y, x), (5, 12), is5x5: true);
           }
         }
 
 
         if (NeighborBombs5x5 >= 14 && rdn.NextSingle() <= 0.26f)
         {
-          parent.IterateNeighbor((y,x), (y, x, n) => {
+          parent.IterateNeighbor((y, x), (y, x, n) =>
+          {
             if (rdn.Next(1, 17) == n)
             {
-              BombNeighborsInRdnRange((y, x), (2, 8), is5x5:false);
+              BombNeighborsInRdnRange((y, x), (2, 8), is5x5: false);
             }
-          }, is5x5:true);
+          }, is5x5: true);
         }
       });
     }
 
 
-    internal void StrategicConway(byte chance)
+    internal void Conditional(byte chance)
     {
       Random(chance);
 
@@ -761,9 +784,9 @@ class Program
     switch (UserInput(1, 4))
     {
       case 1:
-        xsize = 7;
-        ysize = 7;
-        difficulty = 2;
+        xsize = 9;
+        ysize = 9;
+        difficulty = 3;
         break;
 
       case 2:
@@ -785,6 +808,12 @@ class Program
     MineSweeper Field = new(ysize, xsize);
 
     Field.Setup.Concentration.Gaussian();
+
+    for (byte i = 0; i < 3; i++)
+    {
+      Field.Setup.ConditionCollection();
+    }
+
     Field.Display();
 
     Console.Write("Digite as coordenadas para começar: ");
