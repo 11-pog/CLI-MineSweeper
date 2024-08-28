@@ -615,7 +615,7 @@ internal class MineSweeper
         return (float)Math.Exp(-(Math.Pow(x - CenterX, 2) / (2 * mod * mod) + Math.Pow(y - CenterY, 2) / (2 * mod * mod)));
       }
 
-      
+
       internal void Gaussian((float, float)? mod = null)
       {
         mod ??= (1.2f, 1.6f);
