@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "D:\\Quase Importante\\Codegos\\CSharp\\CSharp-Playground\\MineSweeper\\MineSweeper.csproj": {}
+    "C:\\Users\\Samuel\\Desktop\\Codes\\CSharp\\CSharp-Playground\\MineSweeper\\MineSweeper.csproj": {}
   },
   "projects": {
-    "D:\\Quase Importante\\Codegos\\CSharp\\CSharp-Playground\\MineSweeper\\MineSweeper.csproj": {
+    "C:\\Users\\Samuel\\Desktop\\Codes\\CSharp\\CSharp-Playground\\MineSweeper\\MineSweeper.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\Quase Importante\\Codegos\\CSharp\\CSharp-Playground\\MineSweeper\\MineSweeper.csproj",
+        "projectUniqueName": "C:\\Users\\Samuel\\Desktop\\Codes\\CSharp\\CSharp-Playground\\MineSweeper\\MineSweeper.csproj",
         "projectName": "MineSweeper",
-        "projectPath": "D:\\Quase Importante\\Codegos\\CSharp\\CSharp-Playground\\MineSweeper\\MineSweeper.csproj",
-        "packagesPath": "C:\\Users\\alves\\.nuget\\packages\\",
-        "outputPath": "D:\\Quase Importante\\Codegos\\CSharp\\CSharp-Playground\\MineSweeper\\obj\\",
+        "projectPath": "C:\\Users\\Samuel\\Desktop\\Codes\\CSharp\\CSharp-Playground\\MineSweeper\\MineSweeper.csproj",
+        "packagesPath": "C:\\Users\\Samuel\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Samuel\\Desktop\\Codes\\CSharp\\CSharp-Playground\\MineSweeper\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\alves\\AppData\\Roaming\\NuGet\\NuGet.Config"
+          "C:\\Users\\Samuel\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net8.0"
@@ -58,7 +58,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.300/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.204/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

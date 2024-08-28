@@ -622,7 +622,7 @@ internal class MineSweeper
         byte? CurrentY = null;
 
         byte PointsAmount = (byte)((parent.height + parent.width) / 2);
-        Queue<(byte, byte)> Points = GetRandomPoints(((byte, byte))(PointsAmount - 3, PointsAmount + 5));
+        Queue<(byte, byte)> Points = GetRandomPoints(((byte, byte))(PointsAmount, PointsAmount + 5));
 
         float[,] AccumulatedConcentrations = new float[parent.height, parent.width];
 
