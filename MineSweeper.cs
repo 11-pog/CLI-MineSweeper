@@ -103,7 +103,7 @@ internal class MineSweeper
   {
     if (YorX != 0 && YorX != 1)
     {
-      throw new ArgumentOutOfRangeException("Invalid y or x value.");
+      throw new ArgumentOutOfRangeException("YorX: Invalid y or x value.");
     }
 
     if (!is5x5)
