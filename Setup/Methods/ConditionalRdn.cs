@@ -1,57 +1,9 @@
-internal class SetupMethods
+internal class ConditionalRandom : SetupCore
   {
-    protected readonly MineSweeper parent;
-    internal readonly Random rdn = new();
-    internal SetupMethods(MineSweeper parent)
+    General gen = new(new MineSweeper(1, 1));
+    internal ConditionalRandom(MineSweeper Field) : base(Field)
     {
-      this.parent = parent;
-    }
-
-
-    internal void SingleRandom((byte, byte) Coords, float chance)
-    {
-      byte y = Coords.Item1;
-      byte x = Coords.Item2;
-
-      parent[y, x, MineSweeper.isRevealed] = true;
-      parent[y, x, MineSweeper.isFlagged] = false;
-
-      if (rdn.NextSingle() <= chance)
-      {
-        parent[y, x, MineSweeper.isBomb] = true;
-      }
-      else
-      {
-        parent[y, x, MineSweeper.isBomb] = false;
-      }
-    }
-
-
-    internal void Random(byte chance)
-    {
-      float fChance = 1 / chance;
-
-      parent.IterateAllCells((y, x) =>
-      {
-        SingleRandom((y, x), fChance);
-      });
-    }
-
-
-    private void BombNeighborsInRdnRange((byte, byte) Coords, (byte, byte) Range, bool? BombState = null, bool is5x5 = false)
-    {
-      byte amount = (byte)rdn.Next(Range.Item1, Range.Item2 + 1);
-
-      byte startingPoint = (byte)rdn.Next(0, (is5x5 ? 17 : 9) - Range.Item2);
-      byte stoppingPoint = (byte)(startingPoint + amount);
-
-      parent.IterateNeighbor(Coords, (y, x, n) =>
-      {
-        if (startingPoint <= n && n <= stoppingPoint)
-        {
-          parent[y, x, MineSweeper.isBomb] = BombState ?? rdn.NextSingle() > 0.5f;
-        }
-      }, is5x5: is5x5);
+      gen = new General(Field);
     }
 
     internal void ConditionCollection()
@@ -117,23 +69,13 @@ internal class SetupMethods
     }
 
 
-    internal void Conditional(byte chance)
+    public void SetField(byte chance)
     {
-      Random(chance);
+      gen.Randomize(chance);
 
       for (byte i = 0; i < 3; i++)
       {
         ConditionCollection();
       }
     }
-
-
-    internal void NoGuessing(float Mod = 1.0f)
-    {
-      //PlaceHolder
-      //Literalmente a mais complicada de todas
-    }
-
-    //Necessito de ideias pra setups diferentes
-    internal ConcentrationBased Concentration => new(this, parent);
   }

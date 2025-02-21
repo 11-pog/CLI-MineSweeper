@@ -41,12 +41,7 @@ class Program
     }
 
     MineSweeper Field = new(Y_Size, X_Size);
-    Field.Setup.Concentration.Gaussian();
-
-    for (byte i = 0; i < 3; i++)
-    {
-      Field.Setup.ConditionCollection();
-    }
+    Field.Gaussian.SetField();
 
     Field.Display();
 

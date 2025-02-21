@@ -1,23 +1,15 @@
-internal class ConcentrationBased
+internal class Gaussian : SetupCore
     {
-      protected readonly MineSweeper parent;
-      protected readonly SetupMethods Setup;
-      internal ConcentrationBased(SetupMethods Setup, MineSweeper parent)
-      {
-        this.Setup = Setup;
-        this.parent = parent;
-      }
-
-
+      internal Gaussian(MineSweeper Field) : base(Field) {}
 
       private Queue<(byte, byte)> GetRandomPoints((byte, byte) PointsAmountRdnRange)
       {
         Queue<(byte, byte)> values = new();
-        byte pointsAmount = (byte)Setup.rdn.Next(PointsAmountRdnRange.Item1, PointsAmountRdnRange.Item2);
+        byte pointsAmount = (byte)rdn.Next(PointsAmountRdnRange.Item1, PointsAmountRdnRange.Item2);
 
         for (byte r = 0; r <= pointsAmount; r++)
         {
-          values.Enqueue(((byte, byte))(Setup.rdn.Next(0, parent.height), Setup.rdn.Next(0, parent.width)));
+          values.Enqueue(((byte, byte))(rdn.Next(0, parent.height), rdn.Next(0, parent.width)));
         }
 
         return values;
@@ -53,7 +45,7 @@ internal class ConcentrationBased
       }
 
 
-      internal void Gaussian((float, float)? mod = null)
+      internal void SetField((float, float)? mod = null)
       {
         mod ??= (1.2f, 1.6f);
         byte? CurrentY = null;
@@ -65,7 +57,7 @@ internal class ConcentrationBased
 
         foreach (var Point in Points)
         {
-          float RandomMod = (float)((Setup.rdn.NextDouble() * (mod.Value.Item2 - mod.Value.Item1)) + mod.Value.Item1);
+          float RandomMod = (float)((rdn.NextDouble() * (mod.Value.Item2 - mod.Value.Item1)) + mod.Value.Item1);
 
           parent.IterateAllCells((y, x) =>
           {
@@ -84,7 +76,7 @@ internal class ConcentrationBased
         {
           AccumulatedConcentrations[y, x] = Math.Clamp(AccumulatedConcentrations[y, x] / 2, 0, 1);
           TestDisplay(AccumulatedConcentrations[y, x], ref CurrentY, y);
-          Setup.SingleRandom((y, x), AccumulatedConcentrations[y, x]);
+          RandomizeCell((y, x), AccumulatedConcentrations[y, x]);
         });
       }
     }

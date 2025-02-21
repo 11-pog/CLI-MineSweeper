@@ -291,9 +291,10 @@ internal class MineSweeper
     byte OutOfBoundsNeighbor = cellData.Item2;
     byte RevealedNeighbors = cellData.Item3;
 
-    if (!hasNeighborBomb && this[Coords.Item1, Coords.Item2, isRevealed] == true && ((RevealedNeighbors < 8 && OutOfBoundsNeighbor == 0)
-                                                                             || (RevealedNeighbors < 5 && OutOfBoundsNeighbor == 3)
-                                                                             || (RevealedNeighbors < 3 && OutOfBoundsNeighbor == 5)))
+    if (!hasNeighborBomb && this[Coords.Item1, Coords.Item2, isRevealed] == true &&
+        ((RevealedNeighbors < 8 && OutOfBoundsNeighbor == 0)
+        || (RevealedNeighbors < 5 && OutOfBoundsNeighbor == 3)
+        || (RevealedNeighbors < 3 && OutOfBoundsNeighbor == 5)))
     {
       if (Act is not null)
       {
@@ -454,7 +455,6 @@ internal class MineSweeper
   }
 
 
-
   internal void Action()
   {
     Console.Write("\n");
@@ -520,5 +520,7 @@ internal class MineSweeper
     }
   }
 
-  internal SetupMethods Setup => new(this);
+    public Gaussian Gaussian => new(this);
+    public ConditionalRandom ConditionalRandom => new(this);
+    public General GeneralSetup => new(this);
 }
