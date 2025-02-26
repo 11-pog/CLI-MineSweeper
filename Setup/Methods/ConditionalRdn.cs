@@ -23,18 +23,19 @@ internal class ConditionalRandom : SetupCore
         bool isCorner = OutOfBoundNeighbors3x3 == 5;
 
 
-        if (parent[y, x, MineSweeper.isBomb] && (NeighborBombs3x3 == 8
+        if (parent[y, x, Cell.isBomb] && (NeighborBombs3x3 == 8
               || (NeighborBombs3x3 == 5 && isEdge)
               || (NeighborBombs3x3 == 3 && isCorner)))
         {
-          parent[y, x, MineSweeper.isBomb] = false;
+          parent[y, x, Cell.isBomb] = false;
         }
 
 
         if ((isEdge && rdn.NextSingle() <= 0.2f)
-              || (isCorner && rdn.NextSingle() <= 0.4f))
+          || 
+           (isCorner && rdn.NextSingle() <= 0.4f))
         {
-          parent[y, x, MineSweeper.isBomb] = false;
+          parent[y, x, Cell.isBomb] = false;
         }
 
 
@@ -69,7 +70,7 @@ internal class ConditionalRandom : SetupCore
     }
 
 
-    public void SetField(byte chance)
+    internal void SetField(byte chance)
     {
       gen.Randomize(chance);
 

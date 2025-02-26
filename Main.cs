@@ -63,8 +63,8 @@ class Program
         {
           Field.IterateNeighbor((OutputY, OutputX), (y, x, _) =>
           {
-            Field[y, x, MineSweeper.isBomb] = false;
-            Field[y, x, MineSweeper.isRevealed] = true;
+            Field[y, x, Cell.isBomb] = false;
+            Field[y, x, Cell.isRevealed] = true;
           });
           break;
         }

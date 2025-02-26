@@ -1,15 +1,16 @@
-internal enum CellKeys
-{
-  isRevealed,
-  isFlagged,
-  isBomb
-}
+
+internal enum Cell
+  {
+    isRevealed,
+    isFlagged,
+    isBomb
+  }
+
 
 internal class MineSweeper
 {
-  internal const CellKeys isRevealed = CellKeys.isRevealed;
-  internal const CellKeys isFlagged = CellKeys.isFlagged;
-  internal const CellKeys isBomb = CellKeys.isBomb;
+  
+
   internal static readonly sbyte[,] Surrounding3x3 = {
     { 1, -1 },
     { 1, 0 },
@@ -60,7 +61,7 @@ internal class MineSweeper
   }
 
 
-  internal bool this[byte y, byte x, CellKeys key]
+  internal bool this[byte y, byte x, Cell key]
   {
     get => field[y, x, (int)key];
     set => field[y, x, (int)key] = value;
@@ -138,12 +139,12 @@ internal class MineSweeper
     {
       if (IsInBounds(NewY, NewX))
       {
-        if (this[NewY, NewX, isRevealed])
+        if (this[NewY, NewX, Cell.isRevealed])
         {
           RevealedNeighbors++;
         }
 
-        if (this[NewY, NewX, isBomb])
+        if (this[NewY, NewX, Cell.isBomb])
         {
           NeighborBombs++;
         }
@@ -192,9 +193,9 @@ internal class MineSweeper
     byte x = coords.Item2;
     byte y = coords.Item1;
 
-    if (!this[y, x, isFlagged])
+    if (!this[y, x, Cell.isFlagged])
     {
-      this[y, x, isRevealed] = true;
+      this[y, x, Cell.isRevealed] = true;
 
       CheckForGameOver();
       FloodFillBFS((y, x));
@@ -212,9 +213,9 @@ internal class MineSweeper
     byte x = coords.Item2;
     byte y = coords.Item1;
 
-    if (!this[y, x, isRevealed])
+    if (!this[y, x, Cell.isRevealed])
     {
-      this[y, x, isFlagged] = !this[y, x, isFlagged];
+      this[y, x, Cell.isFlagged] = !this[y, x, Cell.isFlagged];
 
       Display();
     }
@@ -248,9 +249,9 @@ internal class MineSweeper
 
       for (byte x = 0; x < width; x++)
       {
-        if (!this[y, x, isRevealed])
+        if (!this[y, x, Cell.isRevealed])
         {
-          if (this[y, x, isFlagged])
+          if (this[y, x, Cell.isFlagged])
           {
             Console.Write("# ");
           }
@@ -259,7 +260,7 @@ internal class MineSweeper
             Console.Write("O ");
           }
         }
-        else if (this[y, x, isBomb])
+        else if (this[y, x, Cell.isBomb])
         {
           Console.Write("* ");
         }
@@ -291,7 +292,7 @@ internal class MineSweeper
     byte OutOfBoundsNeighbor = cellData.Item2;
     byte RevealedNeighbors = cellData.Item3;
 
-    if (!hasNeighborBomb && this[Coords.Item1, Coords.Item2, isRevealed] == true &&
+    if (!hasNeighborBomb && this[Coords.Item1, Coords.Item2, Cell.isRevealed] == true &&
         ((RevealedNeighbors < 8 && OutOfBoundsNeighbor == 0)
         || (RevealedNeighbors < 5 && OutOfBoundsNeighbor == 3)
         || (RevealedNeighbors < 3 && OutOfBoundsNeighbor == 5)))
@@ -323,7 +324,7 @@ internal class MineSweeper
 
     void Expose(byte y, byte x, byte _)
     {
-      this[y, x, isRevealed] = true;
+      this[y, x, Cell.isRevealed] = true;
 
       if (Enqueue) QueuedCoords!.Enqueue((y, x));
     }
@@ -360,9 +361,9 @@ internal class MineSweeper
       {
         IterateNeighbor(currentCoords, (y, x, _) =>
         {
-          if (!this[y, x, isRevealed])
+          if (!this[y, x, Cell.isRevealed])
           {
-            this[y, x, isRevealed] = true;
+            this[y, x, Cell.isRevealed] = true;
             queue.Enqueue((y, x));
           }
         }, WithCenter: false);
@@ -415,7 +416,7 @@ internal class MineSweeper
   {
     IterateAllCells((y, x) =>
     {
-      if (this[y, x, isRevealed] && this[y, x, isBomb])
+      if (this[y, x, Cell.isRevealed] && this[y, x, Cell.isBomb])
       {
         GameEnded = true;
         return;

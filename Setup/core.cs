@@ -2,7 +2,7 @@ internal class SetupCore
   {
     protected readonly MineSweeper parent;
     protected readonly Random rdn = new();
-    public SetupCore(MineSweeper parent)
+    internal SetupCore(MineSweeper parent)
     {
       this.parent = parent;
     }
@@ -13,16 +13,16 @@ internal class SetupCore
       byte y = Coords.Item1;
       byte x = Coords.Item2;
 
-      parent[y, x, MineSweeper.isRevealed] = true;
-      parent[y, x, MineSweeper.isFlagged] = false;
+      parent[y, x, Cell.isRevealed] = true;
+      parent[y, x, Cell.isFlagged] = false;
 
       if (rdn.NextSingle() <= BombChance)
       {
-        parent[y, x, MineSweeper.isBomb] = true;
+        parent[y, x, Cell.isBomb] = true;
       }
       else
       {
-        parent[y, x, MineSweeper.isBomb] = false;
+        parent[y, x, Cell.isBomb] = false;
       }
     }
 
@@ -38,7 +38,7 @@ internal class SetupCore
       {
         if (startingPoint <= n && n <= stoppingPoint)
         {
-          parent[y, x, MineSweeper.isBomb] = BombState ?? rdn.NextSingle() > 0.5f;
+          parent[y, x, Cell.isBomb] = BombState ?? rdn.NextSingle() > 0.5f;
         }
       }, is5x5: is5x5);
     }
