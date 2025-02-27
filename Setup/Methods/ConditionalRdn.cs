@@ -8,10 +8,10 @@ internal class ConditionalRandom : SetupCore
 
     internal void ConditionCollection()
     {
-      parent.IterateAllCells((y, x) =>
+      Parent.IterateAllCells((y, x) =>
       {
-        (byte, byte, byte) CellData3x3 = parent.GetCellData((y, x));
-        (byte, byte, byte) CellData5x5 = parent.GetDataAllIn5x5((y, x));
+        (byte, byte, byte) CellData3x3 = Parent.GetCellData((y, x));
+        (byte, byte, byte) CellData5x5 = Parent.GetDataAllIn5x5((y, x));
 
         byte NeighborBombs3x3 = CellData3x3.Item1;
         byte OutOfBoundNeighbors3x3 = CellData3x3.Item2;
@@ -23,11 +23,11 @@ internal class ConditionalRandom : SetupCore
         bool isCorner = OutOfBoundNeighbors3x3 == 5;
 
 
-        if (parent[y, x, Cell.isBomb] && (NeighborBombs3x3 == 8
+        if (Parent[y, x, Cell.isBomb] && (NeighborBombs3x3 == 8
               || (NeighborBombs3x3 == 5 && isEdge)
               || (NeighborBombs3x3 == 3 && isCorner)))
         {
-          parent[y, x, Cell.isBomb] = false;
+          Parent[y, x, Cell.isBomb] = false;
         }
 
 
@@ -35,7 +35,7 @@ internal class ConditionalRandom : SetupCore
           || 
            (isCorner && rdn.NextSingle() <= 0.4f))
         {
-          parent[y, x, Cell.isBomb] = false;
+          Parent[y, x, Cell.isBomb] = false;
         }
 
 
@@ -58,7 +58,7 @@ internal class ConditionalRandom : SetupCore
 
         if (NeighborBombs5x5 >= 14 && rdn.NextSingle() <= 0.26f)
         {
-          parent.IterateNeighbor((y, x), (y, x, n) =>
+          Parent.IterateNeighbor((y, x), (y, x, n) =>
           {
             if (rdn.Next(1, 17) == n)
             {

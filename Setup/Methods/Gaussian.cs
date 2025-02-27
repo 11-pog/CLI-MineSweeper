@@ -9,7 +9,7 @@ internal class Gaussian : SetupCore
 
         for (byte r = 0; r <= pointsAmount; r++)
         {
-          values.Enqueue(((byte, byte))(rdn.Next(0, parent.height), rdn.Next(0, parent.width)));
+          values.Enqueue(((byte, byte))(rdn.Next(0, Parent.height), rdn.Next(0, Parent.width)));
         }
 
         return values;
@@ -50,16 +50,16 @@ internal class Gaussian : SetupCore
         mod ??= (1.2f, 1.6f);
         byte? CurrentY = null;
 
-        byte PointsAmount = (byte)((parent.height + parent.width) / 2);
+        byte PointsAmount = (byte)((Parent.height + Parent.width) / 2);
         Queue<(byte, byte)> Points = GetRandomPoints(((byte, byte))(PointsAmount, PointsAmount + 5));
 
-        float[,] AccumulatedConcentrations = new float[parent.height, parent.width];
+        float[,] AccumulatedConcentrations = new float[Parent.height, Parent.width];
 
         foreach (var Point in Points)
         {
           float RandomMod = (float)((rdn.NextDouble() * (mod.Value.Item2 - mod.Value.Item1)) + mod.Value.Item1);
 
-          parent.IterateAllCells((y, x) =>
+          Parent.IterateAllCells((y, x) =>
           {
             float Concentration = GetGaussian((y, x), Point, RandomMod);
 
@@ -72,7 +72,7 @@ internal class Gaussian : SetupCore
 
         CurrentY = null;
 
-        parent.IterateAllCells((y, x) =>
+        Parent.IterateAllCells((y, x) =>
         {
           AccumulatedConcentrations[y, x] = Math.Clamp(AccumulatedConcentrations[y, x] / 2, 0, 1);
           TestDisplay(AccumulatedConcentrations[y, x], ref CurrentY, y);
