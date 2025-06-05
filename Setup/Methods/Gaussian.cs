@@ -9,7 +9,7 @@ internal class Gaussian : SetupCore
 
         for (byte r = 0; r <= pointsAmount; r++)
         {
-          values.Enqueue(((byte, byte))(rdn.Next(0, Parent.height), rdn.Next(0, Parent.width)));
+          values.Enqueue(((byte, byte))(rdn.Next(0, Parent.Height), rdn.Next(0, Parent.Width)));
         }
 
         return values;
@@ -50,10 +50,10 @@ internal class Gaussian : SetupCore
         mod ??= (1.2f, 1.6f);
         byte? CurrentY = null;
 
-        byte PointsAmount = (byte)((Parent.height + Parent.width) / 2);
+        byte PointsAmount = (byte)((Parent.Height + Parent.Width) / 2);
         Queue<(byte, byte)> Points = GetRandomPoints(((byte, byte))(PointsAmount, PointsAmount + 5));
 
-        float[,] AccumulatedConcentrations = new float[Parent.height, Parent.width];
+        float[,] AccumulatedConcentrations = new float[Parent.Height, Parent.Width];
 
         foreach (var Point in Points)
         {
