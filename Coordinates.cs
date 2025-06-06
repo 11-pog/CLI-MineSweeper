@@ -23,4 +23,38 @@ namespace CLI_MineSweeper
         public static bool operator !=(Coordinates left, Coordinates right) => !left.Equals(right);
         public static Coordinates operator +(Coordinates left, Coordinates right) => new(left.X + right.X, left.Y + right.Y);
     }
+
+    public static class CoordinateExtension
+    {
+        public static CellData GetData(this Coordinates src, MineSweeper field, int searchSize = 1, NeighborSearchStyle searchStyle = NeighborSearchStyle.SquareGrid)
+        {
+            byte OutOfBoundNeighbors = 0;
+            byte RevealedNeighbors = 0;
+            byte BombNeighbors = 0;
+
+            field.IterateNeighbor(src, (coords, _) =>
+            {
+                if (field.IsInBounds(coords))
+                {
+                    if (field[coords, Cell.isRevealed])
+                    {
+                        RevealedNeighbors++;
+                    }
+
+                    if (field[coords, Cell.isBomb])
+                    {
+                        BombNeighbors++;
+                    }
+                }
+                else
+                {
+                    OutOfBoundNeighbors++;
+                }
+            }, searchStyle: searchStyle, searchSize: searchSize,
+            includeCenterCell: false, excludeOutOfBounds: false);
+
+            return new CellData(BombNeighbors, OutOfBoundNeighbors, RevealedNeighbors);
+        }
+    }
+
 }
