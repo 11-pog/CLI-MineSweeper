@@ -1,18 +1,21 @@
-internal class General : SetupCore
+namespace CLI_MineSweeper
 {
-    protected readonly MineSweeper Field;
-    internal General(MineSweeper Field) : base(Field)
+    public class General : SetupCore
     {
-        this.Field = Field;
-    }
+        protected readonly MineSweeper Field;
+        internal General(MineSweeper Field) : base(Field)
+        {
+            this.Field = Field;
+        }
 
-    internal void Randomize(byte chance)
-    {
-      float fChance = 1 / chance;
+        internal void Randomize(byte chance)
+        {
+            float fChance = 1 / chance;
 
-      Field.IterateAllCells((y, x) =>
-      {
-        RandomizeCell((y, x), fChance);
-      });
+            Field.IterateAllCells((coords) =>
+            {
+                RandomizeCell(coords, fChance);
+            });
+        }
     }
 }

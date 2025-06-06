@@ -7,12 +7,13 @@ using System.Threading.Tasks;
 
 namespace CLI_MineSweeper
 {
-    public struct Coordinates(int x, int y) : IEquatable<Coordinates>
+    public struct Coordinates(int x, int y, MineSweeper? source = null) : IEquatable<Coordinates>
     {
         public int X { get; private set; } = x;
         public int Y { get; private set; } = y;
+        public readonly MineSweeper? source = source;
 
-        public Coordinates Offset(int dx, int dy) => new(X + dx, Y + dy);
+        public readonly Coordinates Offset(int dx, int dy) => new(X + dx, Y + dy);
 
         public readonly bool Equals(Coordinates other) => other.X == X && other.Y == Y;
         public override readonly bool Equals([NotNullWhen(true)] object? obj) => obj is Coordinates other && Equals(other);
@@ -26,22 +27,24 @@ namespace CLI_MineSweeper
 
     public static class CoordinateExtension
     {
-        public static CellData GetData(this Coordinates src, MineSweeper field, int searchSize = 1, NeighborSearchStyle searchStyle = NeighborSearchStyle.SquareGrid)
+        public static CellData GetData(this Coordinates src, int searchSize = 1, NeighborSearchStyle searchStyle = NeighborSearchStyle.SquareGrid)
         {
             byte OutOfBoundNeighbors = 0;
             byte RevealedNeighbors = 0;
             byte BombNeighbors = 0;
 
-            field.IterateNeighbor(src, (coords, _) =>
+            if (src.source is null) throw new InvalidOperationException("Coordinates object has no associated source.");
+            
+            src.source.IterateNeighbor(src, (coords, _) =>
             {
-                if (field.IsInBounds(coords))
+                if (src.source.IsInBounds(coords))
                 {
-                    if (field[coords, Cell.isRevealed])
+                    if (src.source[coords, Cell.isRevealed])
                     {
                         RevealedNeighbors++;
                     }
 
-                    if (field[coords, Cell.isBomb])
+                    if (src.source[coords, Cell.isBomb])
                     {
                         BombNeighbors++;
                     }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -31,5 +32,26 @@ namespace CLI_MineSweeper
 
             return [.. OffsetMap];
         }
+
+        public static void Clear()
+        {
+            try
+            {
+                Console.Clear();
+            }
+            catch
+            {
+                for (int i = 0; i < 50; i++)
+                {
+                    Console.WriteLine('\n');
+                }
+            }
+        }
+    }
+
+    public static class Extensions
+    {
+        public static bool isAllDigit(this string src) => src.All(letter => char.IsDigit(letter));
+        public static bool isAllLetter(this string src) => src.All(letter => char.IsLetter(letter));
     }
 }

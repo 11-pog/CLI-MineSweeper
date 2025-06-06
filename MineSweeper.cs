@@ -31,14 +31,18 @@ namespace CLI_MineSweeper
             set => field[coords.Y, coords.X, (int)key] = value;
         }
 
+        public Coordinates GetCoordinates(int X, int Y) => new(X, Y, this);
 
-        internal void IterateAllCells(Action<Coordinates> Act)
+
+
+        internal void IterateAllCells(Action<Coordinates> onCell, Action<int>? onNewRow = null)
         {
             for (int y = 0; y < Height; y++)
             {
+                if (onNewRow is not null) onNewRow(y);
                 for (int x = 0; x < Width; x++)
                 {
-                    Act(new Coordinates(x, y));
+                    onCell(new Coordinates(x, y));
                 }
             }
         }
@@ -71,21 +75,6 @@ namespace CLI_MineSweeper
         internal bool IsInBounds(Coordinates coords) => IsInBounds(coords.Y, coords.X);
         internal bool IsInBounds(int Y, int X) => Y < Height && X < Width;
 
-        static void Clear()
-        {
-            try
-            {
-                Console.Clear();
-            }
-            catch
-            {
-                for (int i = 0; i < 50; i++)
-                {
-                    Console.WriteLine('\n');
-                }
-            }
-        }
-
 
         internal void Dig(Coordinates coords)
         {
@@ -104,15 +93,11 @@ namespace CLI_MineSweeper
         }
 
 
-        internal void Flag((byte, byte) coords)
+        internal void Flag(Coordinates coords)
         {
-            byte x = coords.Item2;
-            byte y = coords.Item1;
-
-            if (!this[y, x, Cell.isRevealed])
+            if (!this[coords, Cell.isRevealed])
             {
-                this[y, x, Cell.isFlagged] = !this[y, x, Cell.isFlagged];
-
+                this[coords, Cell.isFlagged] = !this[coords, Cell.isFlagged];
                 Display();
             }
             else
@@ -122,10 +107,9 @@ namespace CLI_MineSweeper
         }
 
 
-
         internal void Display()
         {
-            Clear();
+            Util.Clear();
             Console.Write("\n   ");
 
             for (byte x = 0; x < Width; x++)
@@ -135,19 +119,19 @@ namespace CLI_MineSweeper
 
             Console.Write("\n");
 
-            for (byte y = 0; y < Height; y++)
+            for (byte i = 0; i < Height; i++)
             {
-                if (y < 9)
-                {
-                    Console.Write(" ");
-                }
-                Console.Write(y + 1 + "|");
+                if (i < 9) Console.Write(" ");
 
-                for (byte x = 0; x < Width; x++)
+                Console.Write($"{i + 1}|");
+
+                for (byte j = 0; j < Width; j++)
                 {
-                    if (!this[y, x, Cell.isRevealed])
+                    Coordinates cell = GetCoordinates(j, i);
+
+                    if (!this[cell, Cell.isRevealed])
                     {
-                        if (this[y, x, Cell.isFlagged])
+                        if (this[cell, Cell.isFlagged])
                         {
                             Console.Write("# ");
                         }
@@ -156,17 +140,16 @@ namespace CLI_MineSweeper
                             Console.Write("O ");
                         }
                     }
-                    else if (this[y, x, Cell.isBomb])
+                    else if (this[cell, Cell.isBomb])
                     {
                         Console.Write("* ");
                     }
                     else
                     {
-                        byte bombcount = GetCellData((y, x)).Item1;
-
-                        if (bombcount > 0)
+                        byte BombNeighbors = cell.GetData().BombNeighbors;
+                        if (BombNeighbors > 0)
                         {
-                            Console.Write(bombcount + " ");
+                            Console.Write(BombNeighbors + " ");
                         }
                         else
                         {
@@ -180,59 +163,48 @@ namespace CLI_MineSweeper
         }
 
 
-        private bool CanReveal((byte, byte) Coords, Action? Act = null)
+        private bool CanReveal(Coordinates coords, Action? action = null)
         {
-            (byte, byte, byte) cellData = GetCellData(Coords);
+            CellData data = coords.GetData();
 
-            bool hasNeighborBomb = cellData.Item1 != 0;
-            byte OutOfBoundsNeighbor = cellData.Item2;
-            byte RevealedNeighbors = cellData.Item3;
+            bool hasNeighborBomb = data.BombNeighbors != 0;
 
-            if (!hasNeighborBomb && this[Coords.Item1, Coords.Item2, Cell.isRevealed] == true &&
-                ((RevealedNeighbors < 8 && OutOfBoundsNeighbor == 0)
-                || (RevealedNeighbors < 5 && OutOfBoundsNeighbor == 3)
-                || (RevealedNeighbors < 3 && OutOfBoundsNeighbor == 5)))
+            if (!hasNeighborBomb && this[coords, Cell.isRevealed] == true &&
+                data.RevealedNeighbors + data.OutOfBoundNeighbors > 8)
             {
-                if (Act is not null)
-                {
-                    Act();
-                }
+                if (action is not null) action();
                 return true;
             }
             return false;
         }
 
 
-        private (bool, Queue<(byte, byte)>?) ProcessCell(bool Enqueue = false)
+        private Queue<Coordinates>? ProcessCell(out bool outStatus, bool enqueue = false)
         {
-            bool didReveal = false;
-            Queue<(byte, byte)>? QueuedCoords = Enqueue ? new Queue<(byte, byte)>() : null;
+            bool hasRevealed = false;
+            Queue<Coordinates>? QueuedCoords = enqueue ? new Queue<Coordinates>() : null;
 
-            IterateAllCells((y, x) =>
+            IterateAllCells((coords) =>
             {
-                CanReveal((y, x), () =>
+                CanReveal(coords, () =>
             {
-                didReveal = true;
+                hasRevealed = true;
 
-                IterateNeighbor((y, x), Expose, WithCenter: false);
+                IterateNeighbor(coords, Expose, includeCenterCell: false);
             });
             });
 
-            void Expose(byte y, byte x, byte _)
+            void Expose(Coordinates coords, int _)
             {
-                this[y, x, Cell.isRevealed] = true;
+                this[coords, Cell.isRevealed] = true;
 
-                if (Enqueue) QueuedCoords!.Enqueue((y, x));
+                if (enqueue) QueuedCoords!.Enqueue(coords);
             }
 
+            outStatus = hasRevealed;
 
-
-            if (Enqueue)
-            {
-                return (didReveal, QueuedCoords);
-            }
-
-            return (didReveal, null);
+            if (enqueue) return QueuedCoords;
+            return null;
         }
 
 
@@ -241,28 +213,24 @@ namespace CLI_MineSweeper
             Queue<Coordinates> queue = new();
 
             if (startingPoint is null)
-            {
-                queue = ProcessCell(true).Item2!;
-            }
+                queue = ProcessCell(out _, true) ?? new Queue<Coordinates>();
             else
-            {
-                queue.Enqueue(((byte, byte))startingPoint);
-            }
+                queue.Enqueue(startingPoint.Value);
 
             while (queue.Count > 0)
             {
-                (byte, byte) currentCoords = queue.Dequeue();
+                Coordinates currentCoords = queue.Dequeue();
 
                 if (CanReveal(currentCoords))
                 {
-                    IterateNeighbor(currentCoords, (y, x, _) =>
+                    IterateNeighbor(currentCoords, (coords, _) =>
                     {
-                        if (!this[y, x, Cell.isRevealed])
+                        if (!this[coords, Cell.isRevealed])
                         {
-                            this[y, x, Cell.isRevealed] = true;
-                            queue.Enqueue((y, x));
+                            this[coords, Cell.isRevealed] = true;
+                            queue.Enqueue(coords);
                         }
-                    }, IncludeCenterCell: false);
+                    }, includeCenterCell: false);
                 }
             }
         }
@@ -274,45 +242,18 @@ namespace CLI_MineSweeper
 
             do
             {
-                repeat = ProcessCell().Item1;
+                _ = ProcessCell(out repeat);
             } while (repeat);
         }
 
 
-        internal (byte, byte)? IsCodeValid(string[]? input, bool bound = true)
-        {
-            if (input != null && input.Length > 1 && !string.IsNullOrEmpty(input[1]))
-            {
-                string code = input[1].Trim();
-                byte length = (byte)code.Length;
-
-                if (length == 2 || length == 3)
-                {
-                    char y = code[0];
-                    char x = code[1];
-                    char x2 = (length == 3) ? code[2] : '\0';
-
-                    if (char.IsLetter(y) && (char.IsDigit(x) && length == 2 || (char.IsDigit(x) && char.IsDigit(x2))))
-                    {
-                        byte[] coords = CodeToCoordConverter(code);
-
-                        if (IsInBounds(coords[0], coords[1]) || !bound)
-                        {
-                            return (coords[0], coords[1]);
-                        }
-                    }
-                }
-            }
-
-            return null;
-        }
 
 
         internal void CheckForGameOver()
         {
-            IterateAllCells((y, x) =>
+            IterateAllCells(coords =>
             {
-                if (this[y, x, Cell.isRevealed] && this[y, x, Cell.isBomb])
+                if (this[coords, Cell.isRevealed] && this[coords, Cell.isBomb])
                 {
                     GameEnded = true;
                     return;
@@ -321,11 +262,11 @@ namespace CLI_MineSweeper
             });
         }
 
-        internal static void Perform(Action<(byte, byte)> action, (byte, byte)? coords)
+        internal static void Perform(Action<Coordinates> action, Coordinates? target)
         {
-            if (coords is not null)
+            if (target is not null)
             {
-                action(coords.Value);
+                action(target.Value);
                 return;
             }
             else
@@ -334,21 +275,47 @@ namespace CLI_MineSweeper
             }
         }
 
-        internal static byte[] CodeToCoordConverter(string code)
+        internal Coordinates? GetCoordsFromCode(string input, bool inBounds = true)
         {
-            string input = code;
-            input = input.Trim();
-            input = input.ToLower();
+            if (string.IsNullOrEmpty(input)) return null;
+
+            string code = input.Trim();
+            int length = code.Length;
+
+            if (length != 2 && length != 3) return null;
+
+            CodeConversionOrder order;
+            if (char.IsLetter(code[0])) order = CodeConversionOrder.LetterFirst;
+            else order = CodeConversionOrder.NumberFirst;
+
+            char LetterCode = code[0];
+            string NumberCode = code[1..];
+
+            if (char.IsLetter(LetterCode) && (NumberCode.isAllDigit()) && length == 2 || (char.IsDigit(x) && char.IsDigit(x2))))
+            {
+                Coordinates coords = ConvertCodeToCoord(code);
+
+                if (IsInBounds(coords) || !inBounds)
+                {
+                    return coords;
+                }
+            }
+
+            return null;
+        }
+
+        internal static Coordinates ConvertCodeToCoord(string code)
+        {
+            string input = code.Trim().ToLower();
 
             string ystrcoord = input[1..];
             string xstrcoord = input[..1];
 
             char xcharcoord = Convert.ToChar(xstrcoord);
-            int xcoord = xcharcoord - 97;
+            int xcoord = Convert.ToInt32(xcharcoord) - 97;
             int ycoord = Convert.ToInt32(ystrcoord) - 1;
 
-            byte[] output = [(byte)ycoord, (byte)xcoord];
-            return output;
+            return new Coordinates(ycoord, xcoord);
         }
 
 
@@ -356,11 +323,13 @@ namespace CLI_MineSweeper
         {
             Console.Write("\n");
             string? input = Console.ReadLine();
+
             if (input is null)
             {
                 Console.WriteLine("Digite um comando, use 'help' para ver a lista de comandos.");
                 return;
             }
+
             input = input.Trim().ToLower();
             string[] words = input.Split(' ', 2);
 
@@ -370,7 +339,7 @@ namespace CLI_MineSweeper
                 return;
             }
 
-            (byte, byte)? coords = IsCodeValid(words);
+            Coordinates? coords = words.Length > 1 ? GetCoordsFromCode(words[1]) : null;
 
             switch (words[0])
             {
@@ -422,7 +391,6 @@ namespace CLI_MineSweeper
         public General GeneralSetup => new(this);
     }
 
-
     public enum Cell
     {
         isRevealed,
@@ -435,5 +403,11 @@ namespace CLI_MineSweeper
         SquareGrid,
         DiamondGrid,
         Radial
+    }
+
+    public enum CodeConversionOrder
+    {
+        NumberFirst,
+        LetterFirst
     }
 }
