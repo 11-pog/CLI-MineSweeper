@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace CLI_MineSweeper
 {
     public class MineSweeper
@@ -33,17 +35,16 @@ namespace CLI_MineSweeper
 
         public Coordinates GetCoordinates(int X, int Y) => new(X, Y, this);
 
-
-
-        internal void IterateAllCells(Action<Coordinates> onCell, Action<int>? onNewRow = null)
+        internal void IterateAllCells(Action<Coordinates> onCell, Action<int>? onRowStart = null, Action<int>? onRowEnd = null)
         {
             for (int y = 0; y < Height; y++)
             {
-                if (onNewRow is not null) onNewRow(y);
+                if (onRowStart is not null) onRowStart(y);
                 for (int x = 0; x < Width; x++)
                 {
-                    onCell(new Coordinates(x, y));
+                    onCell(GetCoordinates(x, y));
                 }
+                if (onRowEnd is not null) onRowEnd(y);
             }
         }
 
@@ -76,90 +77,40 @@ namespace CLI_MineSweeper
         internal bool IsInBounds(int Y, int X) => Y < Height && X < Width;
 
 
-        internal void Dig(Coordinates coords)
-        {
-            if (!this[coords, Cell.isFlagged])
-            {
-                this[coords, Cell.isRevealed] = true;
-
-                CheckForGameOver();
-                FloodFillBFS(coords);
-                Display();
-            }
-            else
-            {
-                Console.WriteLine("Você não pode revelar uma posição marcada.");
-            }
-        }
-
-
-        internal void Flag(Coordinates coords)
-        {
-            if (!this[coords, Cell.isRevealed])
-            {
-                this[coords, Cell.isFlagged] = !this[coords, Cell.isFlagged];
-                Display();
-            }
-            else
-            {
-                Console.WriteLine("Você não pode desmarcar uma posição já revelada.");
-            }
-        }
-
-
         internal void Display()
         {
             Util.Clear();
             Console.Write("\n   ");
 
             for (byte x = 0; x < Width; x++)
-            {
                 Console.Write((char)(x + 65) + " ");
-            }
 
             Console.Write("\n");
 
-            for (byte i = 0; i < Height; i++)
+            IterateAllCells(cell =>
             {
-                if (i < 9) Console.Write(" ");
-
-                Console.Write($"{i + 1}|");
-
-                for (byte j = 0; j < Width; j++)
-                {
-                    Coordinates cell = GetCoordinates(j, i);
-
-                    if (!this[cell, Cell.isRevealed])
-                    {
-                        if (this[cell, Cell.isFlagged])
-                        {
-                            Console.Write("# ");
-                        }
-                        else
-                        {
-                            Console.Write("O ");
-                        }
-                    }
-                    else if (this[cell, Cell.isBomb])
-                    {
-                        Console.Write("* ");
-                    }
+                if (!this[cell, Cell.isRevealed])
+                    if (this[cell, Cell.isFlagged])
+                        Console.Write("# ");
                     else
-                    {
-                        byte BombNeighbors = cell.GetData().BombNeighbors;
-                        if (BombNeighbors > 0)
-                        {
-                            Console.Write(BombNeighbors + " ");
-                        }
-                        else
-                        {
-                            Console.Write("  ");
-                        }
-                    }
-                }
+                        Console.Write("O ");
+                else if (this[cell, Cell.isBomb])
+                    Console.Write("* ");
 
-                Console.Write("\n");
-            }
+                else
+                {
+                    byte BombNeighbors = cell.GetData().BombNeighbors;
+                    if (BombNeighbors > 0)
+                        Console.Write(BombNeighbors + " ");
+                    else
+                        Console.Write("  ");
+                }
+            }, row =>
+            {
+                if (row < 9) Console.Write(" ");
+
+                Console.Write($"{row + 1}|");
+            }, _ => Console.Write("\n"));
         }
 
 
@@ -184,7 +135,7 @@ namespace CLI_MineSweeper
             bool hasRevealed = false;
             Queue<Coordinates>? QueuedCoords = enqueue ? new Queue<Coordinates>() : null;
 
-            IterateAllCells((coords) =>
+            IterateAllCells(coords =>
             {
                 CanReveal(coords, () =>
             {
@@ -262,60 +213,63 @@ namespace CLI_MineSweeper
             });
         }
 
-        internal static void Perform(Action<Coordinates> action, Coordinates? target)
-        {
-            if (target is not null)
-            {
-                action(target.Value);
-                return;
-            }
-            else
-            {
-                Console.WriteLine("Coordenada invalida, tente novamente.");
-            }
-        }
-
         internal Coordinates? GetCoordsFromCode(string input, bool inBounds = true)
         {
             if (string.IsNullOrEmpty(input)) return null;
 
-            string code = input.Trim();
+            string code = input.Trim().ToLower();
             int length = code.Length;
 
-            if (length != 2 && length != 3) return null;
+            if (length < 2) return null;
 
             CodeConversionOrder order;
             if (char.IsLetter(code[0])) order = CodeConversionOrder.LetterFirst;
             else order = CodeConversionOrder.NumberFirst;
 
-            char LetterCode = code[0];
-            string NumberCode = code[1..];
+            int ChangeIndex = StringUtils.FindCodeSwitchIndex(code);
+            if (ChangeIndex == -1) return null;
 
-            if (char.IsLetter(LetterCode) && (NumberCode.isAllDigit()) && length == 2 || (char.IsDigit(x) && char.IsDigit(x2))))
+            string FirstPart = code[..ChangeIndex];
+            string SecondPart = code[ChangeIndex..];
+
+            bool isValid = order switch
             {
-                Coordinates coords = ConvertCodeToCoord(code);
+                CodeConversionOrder.NumberFirst => FirstPart.IsAllDigit() && SecondPart.IsAllLetter(),
+                CodeConversionOrder.LetterFirst => FirstPart.IsAllLetter() && SecondPart.IsAllDigit(),
+                _ => false
+            };
+            if (!isValid) return null;
 
-                if (IsInBounds(coords) || !inBounds)
-                {
-                    return coords;
-                }
-            }
-
-            return null;
+            Coordinates coords = ConvertCodeToCoord(FirstPart, SecondPart, order);
+            if (!IsInBounds(coords) && inBounds) return null;
+            return coords;
         }
 
-        internal static Coordinates ConvertCodeToCoord(string code)
+        internal static Coordinates ConvertCodeToCoord(string FirstPart, string SecondPart, CodeConversionOrder order)
         {
-            string input = code.Trim().ToLower();
+            FirstPart = FirstPart.Trim();
+            SecondPart = SecondPart.Trim();
 
-            string ystrcoord = input[1..];
-            string xstrcoord = input[..1];
+            string xstring = order switch { 
+                CodeConversionOrder.LetterFirst => FirstPart,
+                CodeConversionOrder.NumberFirst => SecondPart,
+                _ => ""
+            };
+            string ystring = order switch
+            {
+                CodeConversionOrder.LetterFirst => SecondPart,
+                CodeConversionOrder.NumberFirst => FirstPart,
+                _ => ""
+            };
 
-            char xcharcoord = Convert.ToChar(xstrcoord);
-            int xcoord = Convert.ToInt32(xcharcoord) - 97;
-            int ycoord = Convert.ToInt32(ystrcoord) - 1;
+            // Letter is X
+            // Number is Y
+            // That IS fixed
 
-            return new Coordinates(ycoord, xcoord);
+            int xcoord = StringUtils.GetNumberFromLetters(xstring);
+            int ycoord = Convert.ToInt32(ystring);
+
+            return new Coordinates(xcoord, ycoord);
         }
 
 
@@ -333,15 +287,65 @@ namespace CLI_MineSweeper
             input = input.Trim().ToLower();
             string[] words = input.Split(' ', 2);
 
+
             if (words.Length == 0)
             {
                 Console.WriteLine("Digite um comando, use 'help' para ver a lista de comandos.");
                 return;
+            }   
+
+            string command = words[0];
+            string[] args = words[1].Split(" ");
+            Commands(command, args);
+        }
+        internal void Perform(Action<Coordinates> action, string[] args)
+        {
+            Coordinates? target = GetCoordsFromCode(args[0]);
+
+            if (target is not null)
+            {
+                action(target.Value);
+                return;
             }
+            else
+            {
+                Console.WriteLine("Coordenada invalida, tente novamente.");
+            }
+        }
 
-            Coordinates? coords = words.Length > 1 ? GetCoordsFromCode(words[1]) : null;
+        internal void Dig(Coordinates coords)
+        {
+            if (!this[coords, Cell.isFlagged])
+            {
+                this[coords, Cell.isRevealed] = true;
 
-            switch (words[0])
+                CheckForGameOver();
+                FloodFillBFS(coords);
+                Display();
+            }
+            else
+            {
+                Console.WriteLine("Você não pode revelar uma posição marcada.");
+            }
+        }
+
+
+        internal void Flag(Coordinates coords)
+        {
+            if (!this[coords, Cell.isRevealed])
+            {
+                this[coords, Cell.isFlagged] = !this[coords, Cell.isFlagged];
+                Display();
+            }
+            else
+            {
+                Console.WriteLine("Você não pode desmarcar uma posição já revelada.");
+            }
+        }
+
+        private void Commands(string command, string[] args)
+        {
+            switch (command)
             {
                 case "display":
                 case "disp":
@@ -364,11 +368,11 @@ namespace CLI_MineSweeper
                     return;
                 case "dig":
                 case "d":
-                    Perform(Dig, coords);
+                    Perform(Dig, args);
                     return;
                 case "flag":
                 case "f":
-                    Perform(Flag, coords);
+                    Perform(Flag, args);
                     return;
                 case "exit":
                 case "quit":
@@ -378,7 +382,7 @@ namespace CLI_MineSweeper
                 case "print":
                 case "say":
                 case "diz":
-                    Console.WriteLine(words[1]);
+                    Console.WriteLine(string.Join(' ', args));
                     return;
                 default:
                     Console.WriteLine("Comando inválido. Use 'help' para ver a lista de comando.");

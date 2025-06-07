@@ -44,43 +44,35 @@ namespace CLI_MineSweeper
             }
 
             MineSweeper Field = new(Y_Size, X_Size);
-            Field.Gaussian.SetField();
 
+            Field.Gaussian.SetField();
             Field.Display();
 
             Console.Write("Digite as coordenadas para começar: ");
 
-            while (true)
+
+            Coordinates? startCoords = null;
+            while (startCoords is null)
             {
                 string? input = Console.ReadLine()?.Trim();
-                byte? length = (byte?)input?.Length;
+                if (input == null) continue;
 
-                (byte, byte)? Output = Field.GetCoordsFromCode(["\0", input is not null ? input : "\0"], bound: false);
+                int length = input.Length;
+                startCoords = Field.GetCoordsFromCode(input, inBounds: true);
 
-                if (Output is not null)
-                {
-                    byte OutputY = Output.Value.Item1;
-                    byte OutputX = Output.Value.Item2;
-
-                    if (Field.IsInBounds(OutputY, OutputX))
-                    {
-                        Field.IterateNeighbor((OutputY, OutputX), (y, x, _) =>
-                        {
-                            Field[y, x, Cell.isBomb] = false;
-                            Field[y, x, Cell.isRevealed] = true;
-                        });
-                        break;
-                    }
-
-                    Console.WriteLine("Oops, parece que a coordenada que você entrou esta fora da area do jogo.");
-                }
-                else
+                if (startCoords is null)
                 {
                     Console.WriteLine("Oops, parece que você entrou com uma coordenada invalida, faça questão de escrever nesse formato: A1, B2, C27, etc (não é case sensitive).");
+                    Console.WriteLine("Ou talves as coordenadas entradas estejam fora do campo.");
+                    Console.Write("Tente de novo: ");
                 }
-
-                Console.Write("Tente de novo: ");
             }
+
+            Field.IterateNeighbor((startCoords.Value), (coords, _) =>
+            {
+                Field[coords, Cell.isBomb] = false;
+                Field[coords, Cell.isRevealed] = true;
+            });
 
             Field.FloodFillBFS();
             Field.Display();
@@ -106,23 +98,17 @@ namespace CLI_MineSweeper
         }
 
 
-        static int UserInput(int LowerBoundary = 0, int UpperBoundary = 0)
+        static int UserInput(int? LowerBoundary = null, int? UpperBoundary = null)
         {
             do
             {
                 Console.Write("\n");
                 if (int.TryParse(Console.ReadLine(), out int receivedNumber) == true)
                 {
-                    if (LowerBoundary == 0 && UpperBoundary == 0)
-                    {
+                    if ((UpperBoundary is null || receivedNumber <= UpperBoundary)
+                      && (LowerBoundary is null || receivedNumber >= LowerBoundary))
                         return receivedNumber;
-                    }
 
-                    if (receivedNumber <= UpperBoundary
-                      && receivedNumber >= LowerBoundary)
-                    {
-                        return receivedNumber;
-                    }
                     else
                     {
                         Console.WriteLine("O numero que você digitou esta fora dos parâmetros especificados (entre "

@@ -9,6 +9,7 @@ namespace CLI_MineSweeper
             this.Parent = parent;
         }
 
+        public abstract void Setup();
 
         protected void RandomizeCell(Coordinates Coords, float BombChance)
         {
@@ -37,13 +38,13 @@ namespace CLI_MineSweeper
             byte startingPoint = (byte)rdn.Next(0, (is5x5 ? 17 : 9) - Range.Item2);
             byte stoppingPoint = (byte)(startingPoint + amount);
 
-            Parent.IterateNeighbor(Coords, (y, x, n) =>
+            Parent.IterateNeighbor(Coords, (coords, n) =>
             {
                 if (startingPoint <= n && n <= stoppingPoint)
                 {
-                    Parent[y, x, Cell.isBomb] = BombState ?? rdn.NextSingle() > 0.5f;
+                    Parent[coords, Cell.isBomb] = BombState ?? rdn.NextSingle() > 0.5f;
                 }
-            }, is5x5: is5x5);
+            }, searchStyle, searchSize);
         }
     }
 }

@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 
 namespace CLI_MineSweeper
 {
+
     static class Util
     {
         public static Coordinates[] GetOffsetMap(NeighborSearchStyle searchStyle, int searchSize)
@@ -46,12 +47,62 @@ namespace CLI_MineSweeper
                     Console.WriteLine('\n');
                 }
             }
+        } 
+    }
+
+    public static class StringUtils
+    {
+        public static int FindCodeSwitchIndex(string code, CharType? firstChar = null)
+        {
+            firstChar ??= code[0].GetCharType();
+
+            for (int i = 0; i < code.Length; i++)
+            {
+                bool changed = firstChar.Value switch
+                {
+                    CharType.Number => char.IsLetter(code[i]),
+                    CharType.Letter => char.IsNumber(code[i]),
+                    _ => false
+                };
+
+                if (changed) return i;
+            }
+
+            return -1;
+        }
+
+        public static int GetNumberFromLetters(string letters)
+        {
+            letters = letters.Trim().ToLower();
+
+            int length = letters.Length - 1;
+            int sum = 0;
+
+            for (int i = 0; i <= length; i++)
+            {
+                sum += (letters[length - i] - 96) * (int)Math.Pow(26, i);
+            }
+
+            return sum;
         }
     }
 
     public static class Extensions
     {
-        public static bool isAllDigit(this string src) => src.All(letter => char.IsDigit(letter));
-        public static bool isAllLetter(this string src) => src.All(letter => char.IsLetter(letter));
+        public static bool IsAllDigit(this string src) => src.All(letter => char.IsDigit(letter));
+        public static bool IsAllLetter(this string src) => src.All(letter => char.IsLetter(letter));
+        public static CharType GetCharType(this char src)
+        {
+            if (char.IsLetter(src)) return CharType.Letter;
+            else if (char.IsNumber(src)) return CharType.Number;
+            else return CharType.Other;
+        }
+    }
+
+    public enum CharType
+    {
+        Number,
+        Letter,
+        Other
     }
 }

@@ -11,9 +11,10 @@ namespace CLI_MineSweeper
     {
         public int X { get; private set; } = x;
         public int Y { get; private set; } = y;
-        public readonly MineSweeper? source = source;
+        public MineSweeper? Source { get; private set; } = source;
 
         public readonly Coordinates Offset(int dx, int dy) => new(X + dx, Y + dy);
+        public void SetParent(MineSweeper parent) => Source ??= parent; 
 
         public readonly bool Equals(Coordinates other) => other.X == X && other.Y == Y;
         public override readonly bool Equals([NotNullWhen(true)] object? obj) => obj is Coordinates other && Equals(other);
@@ -33,18 +34,18 @@ namespace CLI_MineSweeper
             byte RevealedNeighbors = 0;
             byte BombNeighbors = 0;
 
-            if (src.source is null) throw new InvalidOperationException("Coordinates object has no associated source.");
+            if (src.Source is null) throw new InvalidOperationException("Coordinates object has no associated source.");
             
-            src.source.IterateNeighbor(src, (coords, _) =>
+            src.Source.IterateNeighbor(src, (coords, _) =>
             {
-                if (src.source.IsInBounds(coords))
+                if (src.Source.IsInBounds(coords))
                 {
-                    if (src.source[coords, Cell.isRevealed])
+                    if (src.Source[coords, Cell.isRevealed])
                     {
                         RevealedNeighbors++;
                     }
 
-                    if (src.source[coords, Cell.isBomb])
+                    if (src.Source[coords, Cell.isBomb])
                     {
                         BombNeighbors++;
                     }
