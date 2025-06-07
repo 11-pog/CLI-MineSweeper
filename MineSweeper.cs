@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using CLI_MineSweeper.Objects;
+using CLI_MineSweeper.Utils;
 
 namespace CLI_MineSweeper
 {
@@ -54,7 +56,7 @@ namespace CLI_MineSweeper
             int searchSize = 1, bool includeCenterCell = true,
             bool excludeOutOfBounds = true)
         {
-            Coordinates[] OffsetMap = Util.GetOffsetMap(searchStyle, searchSize);
+            Coordinates[] OffsetMap = Matrix2Utils.GetOffsetMap(searchStyle, searchSize);
             int n = 0;
 
             if (includeCenterCell) action(coords, -1);
@@ -74,7 +76,7 @@ namespace CLI_MineSweeper
 
 
         internal bool IsInBounds(Coordinates coords) => IsInBounds(coords.Y, coords.X);
-        internal bool IsInBounds(int Y, int X) => Y < Height && X < Width;
+        internal bool IsInBounds(int Y, int X) => Y >= 0 && Y < Height && X >= 0 && X < Width;
 
 
         internal void Display()
@@ -121,7 +123,7 @@ namespace CLI_MineSweeper
             bool hasNeighborBomb = data.BombNeighbors != 0;
 
             if (!hasNeighborBomb && this[coords, Cell.isRevealed] == true &&
-                data.RevealedNeighbors + data.OutOfBoundNeighbors > 8)
+                data.RevealedNeighbors + data.OutOfBoundNeighbors < 8)
             {
                 if (action is not null) action();
                 return true;
@@ -138,11 +140,11 @@ namespace CLI_MineSweeper
             IterateAllCells(coords =>
             {
                 CanReveal(coords, () =>
-            {
-                hasRevealed = true;
+                {
+                    hasRevealed = true;
 
-                IterateNeighbor(coords, Expose, includeCenterCell: false);
-            });
+                    IterateNeighbor(coords, Expose, includeCenterCell: false);
+                });
             });
 
             void Expose(Coordinates coords, int _)
@@ -245,12 +247,13 @@ namespace CLI_MineSweeper
             return coords;
         }
 
-        internal static Coordinates ConvertCodeToCoord(string FirstPart, string SecondPart, CodeConversionOrder order)
+        internal Coordinates ConvertCodeToCoord(string FirstPart, string SecondPart, CodeConversionOrder order)
         {
             FirstPart = FirstPart.Trim();
             SecondPart = SecondPart.Trim();
 
-            string xstring = order switch { 
+            string xstring = order switch
+            {
                 CodeConversionOrder.LetterFirst => FirstPart,
                 CodeConversionOrder.NumberFirst => SecondPart,
                 _ => ""
@@ -267,9 +270,9 @@ namespace CLI_MineSweeper
             // That IS fixed
 
             int xcoord = StringUtils.GetNumberFromLetters(xstring);
-            int ycoord = Convert.ToInt32(ystring);
+            int ycoord = Convert.ToInt32(ystring) - 1;
 
-            return new Coordinates(xcoord, ycoord);
+            return GetCoordinates(xcoord, ycoord);
         }
 
 
@@ -292,12 +295,13 @@ namespace CLI_MineSweeper
             {
                 Console.WriteLine("Digite um comando, use 'help' para ver a lista de comandos.");
                 return;
-            }   
+            }
 
             string command = words[0];
-            string[] args = words[1].Split(" ");
+            string[] args = words.Length > 1 ? words[1].Split(" ") : [];
             Commands(command, args);
         }
+
         internal void Perform(Action<Coordinates> action, string[] args)
         {
             Coordinates? target = GetCoordsFromCode(args[0]);
@@ -400,13 +404,6 @@ namespace CLI_MineSweeper
         isRevealed,
         isFlagged,
         isBomb
-    }
-
-    public enum NeighborSearchStyle
-    {
-        SquareGrid,
-        DiamondGrid,
-        Radial
     }
 
     public enum CodeConversionOrder

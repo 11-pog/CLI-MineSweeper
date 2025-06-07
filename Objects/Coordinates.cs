@@ -4,8 +4,9 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using CLI_MineSweeper.Utils;
 
-namespace CLI_MineSweeper
+namespace CLI_MineSweeper.Objects
 {
     public struct Coordinates(int x, int y, MineSweeper? source = null) : IEquatable<Coordinates>
     {
@@ -23,18 +24,18 @@ namespace CLI_MineSweeper
 
         public static bool operator ==(Coordinates left, Coordinates right) => left.Equals(right);
         public static bool operator !=(Coordinates left, Coordinates right) => !left.Equals(right);
-        public static Coordinates operator +(Coordinates left, Coordinates right) => new(left.X + right.X, left.Y + right.Y);
+        public static Coordinates operator +(Coordinates left, Coordinates right) => new(left.X + right.X, left.Y + right.Y, left.Source);
     }
 
     public static class CoordinateExtension
     {
         public static CellData GetData(this Coordinates src, int searchSize = 1, NeighborSearchStyle searchStyle = NeighborSearchStyle.SquareGrid)
         {
+            if (src.Source is null) throw new InvalidOperationException("Coordinates object has no associated source.");
+
             byte OutOfBoundNeighbors = 0;
             byte RevealedNeighbors = 0;
             byte BombNeighbors = 0;
-
-            if (src.Source is null) throw new InvalidOperationException("Coordinates object has no associated source.");
             
             src.Source.IterateNeighbor(src, (coords, _) =>
             {
@@ -57,7 +58,7 @@ namespace CLI_MineSweeper
             }, searchStyle: searchStyle, searchSize: searchSize,
             includeCenterCell: false, excludeOutOfBounds: false);
 
-            return new CellData(BombNeighbors, OutOfBoundNeighbors, RevealedNeighbors);
+            return new CellData(OutOfBoundNeighbors, RevealedNeighbors, BombNeighbors);
         }
     }
 

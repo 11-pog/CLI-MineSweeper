@@ -1,4 +1,7 @@
 
+using CLI_MineSweeper.Objects;
+using CLI_MineSweeper.Utils;
+
 namespace CLI_MineSweeper
 {
     public class ConditionalRandom : SetupCore
@@ -11,64 +14,44 @@ namespace CLI_MineSweeper
 
         internal void ConditionCollection()
         {
-            Parent.IterateAllCells((y, x) =>
+            Parent.IterateAllCells(coords =>
             {
-                (byte, byte, byte) CellData3x3 = Parent.GetCellData((y, x));
-                (byte, byte, byte) CellData5x5 = Parent.GetDataAllIn5x5((y, x));
+                CellData Cell3x3 = coords.GetData(searchSize: 1, searchStyle: NeighborSearchStyle.SquareGrid);
+                CellData Cell5x5 = coords.GetData(searchSize: 2, searchStyle: NeighborSearchStyle.SquareGrid);
 
-                byte NeighborBombs3x3 = CellData3x3.Item1;
-                byte OutOfBoundNeighbors3x3 = CellData3x3.Item2;
-
-                byte NeighborBombs5x5 = CellData5x5.Item1;
-                byte OutOfBoundNeighbors5x5 = CellData5x5.Item2;
-
-                bool isEdge = OutOfBoundNeighbors3x3 == 3;
-                bool isCorner = OutOfBoundNeighbors3x3 == 5;
+                bool isEdge = Cell3x3.OutOfBoundNeighbors == 3;
+                bool isCorner = Cell3x3.OutOfBoundNeighbors == 5;
 
 
-                if (Parent[y, x, Cell.isBomb] && (NeighborBombs3x3 == 8
-                || (NeighborBombs3x3 == 5 && isEdge)
-                || (NeighborBombs3x3 == 3 && isCorner)))
-                {
-                    Parent[y, x, Cell.isBomb] = false;
-                }
+                if (Parent[coords, Cell.isBomb] && Cell3x3.BombNeighbors + Cell3x3.OutOfBoundNeighbors == 8)
+                    Parent[coords, Cell.isBomb] = false;
 
 
                 if ((isEdge && rdn.NextSingle() <= 0.2f)
-            ||
-             (isCorner && rdn.NextSingle() <= 0.4f))
+                || (isCorner && rdn.NextSingle() <= 0.4f))
+                    Parent[coords, Cell.isBomb] = false;
+
+
+                if ((Cell3x3.BombNeighbors == 7 && rdn.NextSingle() <= 0.4f)
+                || (Cell3x3.BombNeighbors == 8 && rdn.NextSingle() <= 0.9f))
+                    BombNeighborsInRdnRange(coords, new NumRange<int>(1, 5), false);
+
+
+                if (Cell5x5.BombNeighbors == 0 && rdn.NextSingle() <= 0.21f)
                 {
-                    Parent[y, x, Cell.isBomb] = false;
-                }
-
-
-                if ((NeighborBombs3x3 == 7 && rdn.NextSingle() <= 0.4f) || (NeighborBombs3x3 == 8 && rdn.NextSingle() <= 0.9f))
-                {
-                    BombNeighborsInRdnRange((y, x), (1, 5), false);
-                }
-
-
-                if (NeighborBombs5x5 == 0 && rdn.NextSingle() <= 0.21f)
-                {
-                    BombNeighborsInRdnRange((y, x), (2, 7), is5x5: false);
+                    BombNeighborsInRdnRange(coords, new NumRange<int>(2, 7));
 
                     if (rdn.NextSingle() <= 0.38f)
-                    {
-                        BombNeighborsInRdnRange((y, x), (5, 12), is5x5: true);
-                    }
+                        BombNeighborsInRdnRange(coords, new NumRange<int>(5, 12), searchSize: 2);
                 }
 
 
-                if (NeighborBombs5x5 >= 14 && rdn.NextSingle() <= 0.26f)
-                {
-                    Parent.IterateNeighbor((y, x), (y, x, n) =>
-              {
-                    if (rdn.Next(1, 17) == n)
+                if (Cell5x5.BombNeighbors >= 14 && rdn.NextSingle() <= 0.26f)
+                    Parent.IterateNeighbor(coords, (neighborCoords, n) =>
                     {
-                        BombNeighborsInRdnRange((y, x), (2, 8), is5x5: false);
-                    }
-                }, is5x5: true);
-                }
+                        if (rdn.Next(1, 17) == n)
+                            BombNeighborsInRdnRange(neighborCoords, new NumRange<int>(2, 8));
+                    }, searchSize: 2);
             });
         }
 

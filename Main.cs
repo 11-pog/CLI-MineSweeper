@@ -1,3 +1,5 @@
+using CLI_MineSweeper.Objects;
+
 namespace CLI_MineSweeper
 {
 

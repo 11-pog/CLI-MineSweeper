@@ -1,5 +1,7 @@
 
 
+using CLI_MineSweeper.Objects;
+
 namespace CLI_MineSweeper
 {
 
@@ -7,21 +9,21 @@ namespace CLI_MineSweeper
     {
         internal Gaussian(MineSweeper Field) : base(Field) { }
 
-        private Queue<(byte, byte)> GetRandomPoints((byte, byte) PointsAmountRdnRange)
+        private Queue<Coordinates> GetRandomPoints(NumRange<int> PointsAmountRdnRange)
         {
-            Queue<(byte, byte)> values = new();
-            byte pointsAmount = (byte)rdn.Next(PointsAmountRdnRange.Item1, PointsAmountRdnRange.Item2);
+            Queue<Coordinates> values = new();
+            byte pointsAmount = (byte)rdn.Next(PointsAmountRdnRange.Start, PointsAmountRdnRange.End);
 
             for (byte r = 0; r <= pointsAmount; r++)
             {
-                values.Enqueue(((byte, byte))(rdn.Next(0, Parent.Height), rdn.Next(0, Parent.Width)));
+                values.Enqueue(new Coordinates(rdn.Next(0, Parent.Width), rdn.Next(0, Parent.Height)));
             }
 
             return values;
         }
 
 
-        private static void TestDisplay(float ToDisplay, ref byte? reference, byte y)
+        private static void TestDisplay(float ToDisplay, ref int? reference, int y)
         {
             if (reference != y)
             {
@@ -38,38 +40,40 @@ namespace CLI_MineSweeper
         }
 
 
-        private static float GetGaussian((byte, byte) Coords, (byte, byte) Center, float mod)
+        private static float GetGaussian(Coordinates coords, Coordinates Center, float mod)
         {
-            byte y = Coords.Item1;
-            byte x = Coords.Item2;
+            int y = coords.Y;
+            int x = coords.X;
 
-            byte CenterY = Center.Item1;
-            byte CenterX = Center.Item2;
+            int CenterY = Center.Y;
+            int CenterX = Center.X;
 
-            return (float)Math.Exp(-(Math.Pow(x - CenterX, 2) / (2 * mod * mod) + Math.Pow(y - CenterY, 2) / (2 * mod * mod)));
+            return (float)Math.Exp(-(Math.Pow(x - CenterX, 2)
+                / (2 * mod * mod) + Math.Pow(y - CenterY, 2)
+                / (2 * mod * mod)));
         }
 
 
-        internal void SetField((float, float)? mod = null)
+        internal void SetField(NumRange<float>? mod = null)
         {
-            mod ??= (1.2f, 1.6f);
-            byte? CurrentY = null;
+            mod ??= new NumRange<float>(1.2f, 1.6f);
+            int? CurrentY = null;
 
-            byte PointsAmount = (byte)((Parent.Height + Parent.Width) / 2);
-            Queue<(byte, byte)> Points = GetRandomPoints(((byte, byte))(PointsAmount, PointsAmount + 5));
+            int PointsAmount = ((Parent.Height + Parent.Width) / 2);
+            Queue<Coordinates> Points = GetRandomPoints(new NumRange<int>(PointsAmount, PointsAmount + 5));
 
             float[,] AccumulatedConcentrations = new float[Parent.Height, Parent.Width];
 
-            foreach (var Point in Points)
+            foreach (Coordinates Point in Points)
             {
-                float RandomMod = (float)((rdn.NextDouble() * (mod.Value.Item2 - mod.Value.Item1)) + mod.Value.Item1);
+                float RandomMod = (float)((rdn.NextDouble() * (mod.Value.End - mod.Value.Start)) + mod.Value.Start);
 
-                Parent.IterateAllCells((y, x) =>
+                Parent.IterateAllCells(coords =>
                 {
-                    float Concentration = GetGaussian((y, x), Point, RandomMod);
+                    float Concentration = GetGaussian(coords, Point, RandomMod);
 
-                    AccumulatedConcentrations[y, x] += Concentration;
-                    TestDisplay(Concentration, ref CurrentY, y);
+                    AccumulatedConcentrations[coords.Y, coords.X] += Concentration;
+                    TestDisplay(Concentration, ref CurrentY, coords.Y);
                 });
 
                 Console.Write('\n');
@@ -77,11 +81,14 @@ namespace CLI_MineSweeper
 
             CurrentY = null;
 
-            Parent.IterateAllCells((y, x) =>
+            Parent.IterateAllCells((coords) =>
             {
+                int y = coords.Y;
+                int x = coords.X;
+
                 AccumulatedConcentrations[y, x] = Math.Clamp(AccumulatedConcentrations[y, x] / 2, 0, 1);
                 TestDisplay(AccumulatedConcentrations[y, x], ref CurrentY, y);
-                RandomizeCell((y, x), AccumulatedConcentrations[y, x]);
+                RandomizeCell(coords, AccumulatedConcentrations[y, x]);
             });
         }
     }

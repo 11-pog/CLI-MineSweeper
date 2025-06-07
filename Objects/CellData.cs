@@ -5,7 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace CLI_MineSweeper
+namespace CLI_MineSweeper.Objects
 {
     public struct CellData(byte outOfBoundNeighbor, byte revealedNeighbors, byte bombNeighbors)
     {

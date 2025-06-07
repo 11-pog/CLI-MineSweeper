@@ -1,3 +1,6 @@
+using CLI_MineSweeper.Objects;
+using CLI_MineSweeper.Utils;
+
 namespace CLI_MineSweeper
 {
     public abstract class SetupCore
@@ -9,7 +12,7 @@ namespace CLI_MineSweeper
             this.Parent = parent;
         }
 
-        public abstract void Setup();
+        // public abstract void SetField();
 
         protected void RandomizeCell(Coordinates Coords, float BombChance)
         {
@@ -30,12 +33,13 @@ namespace CLI_MineSweeper
         }
 
 
-        protected void BombNeighborsInRdnRange(Coordinates Coords, (byte, byte) Range, bool? BombState = null, NeighborSearchStyle 
+        protected void BombNeighborsInRdnRange(Coordinates Coords, NumRange<int> range, bool? BombState = null, NeighborSearchStyle 
             searchStyle = NeighborSearchStyle.SquareGrid, int searchSize = 1)
         {
-            byte amount = (byte)rdn.Next(Range.Item1, Range.Item2 + 1);
+            byte amount = (byte)rdn.Next(range.Start, range.End + 1);
+            int SearchPatternSize = Matrix2Utils.GetSearchPatternSize(searchStyle, searchSize);
 
-            byte startingPoint = (byte)rdn.Next(0, (is5x5 ? 17 : 9) - Range.Item2);
+            byte startingPoint = (byte)rdn.Next(0, SearchPatternSize - range.End);
             byte stoppingPoint = (byte)(startingPoint + amount);
 
             Parent.IterateNeighbor(Coords, (coords, n) =>

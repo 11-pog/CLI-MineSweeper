@@ -4,35 +4,14 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using CLI_MineSweeper.Objects;
 
-namespace CLI_MineSweeper
+namespace CLI_MineSweeper.Utils
 {
 
     static class Util
     {
-        public static Coordinates[] GetOffsetMap(NeighborSearchStyle searchStyle, int searchSize)
-        {
-            List<Coordinates> OffsetMap = [];
-
-            for (int i = -searchSize; i <= searchSize; i++)
-                for (int j = -searchSize; j <= searchSize; j++)
-                {
-                    if (i == 0 && j == 0) continue;
-
-                    bool include = searchStyle switch
-                    {
-                        NeighborSearchStyle.SquareGrid => true,
-                        NeighborSearchStyle.DiamondGrid => Math.Abs(i) + Math.Abs(j) <= searchSize,
-                        NeighborSearchStyle.Radial => Math.Sqrt(i * i + j * j) <= searchSize + .5,
-                        _ => false
-                    };
-
-                    if (include) OffsetMap.Add(new Coordinates(i, j));
-                }
-        ;
-
-            return [.. OffsetMap];
-        }
+        
 
         public static void Clear()
         {
@@ -80,7 +59,7 @@ namespace CLI_MineSweeper
 
             for (int i = 0; i <= length; i++)
             {
-                sum += (letters[length - i] - 96) * (int)Math.Pow(26, i);
+                sum += (letters[length - i] - 97) * (int)Math.Pow(26, i);
             }
 
             return sum;
@@ -97,6 +76,54 @@ namespace CLI_MineSweeper
             else if (char.IsNumber(src)) return CharType.Number;
             else return CharType.Other;
         }
+    }
+
+    public static class Matrix2Utils
+    {
+        public static Coordinates[] GetOffsetMap(NeighborSearchStyle searchStyle, int searchSize)
+        {
+            List<Coordinates> OffsetMap = [];
+
+            for (int i = -searchSize; i <= searchSize; i++)
+                for (int j = -searchSize; j <= searchSize; j++)
+                {
+                    if (i == 0 && j == 0) continue;
+
+                    bool include = searchStyle switch
+                    {
+                        NeighborSearchStyle.SquareGrid => true,
+                        NeighborSearchStyle.SquareEdge => i == -searchSize || i == searchSize || j == -searchSize || j == searchSize,
+                        NeighborSearchStyle.DiamondGrid => Math.Abs(i) + Math.Abs(j) <= searchSize,
+                        NeighborSearchStyle.DiamondEdge => Math.Abs(i) + Math.Abs(j) == searchSize,
+                        NeighborSearchStyle.InverseDiamondGrid => Math.Abs(i) + Math.Abs(j) >= searchSize,
+                        NeighborSearchStyle.Radial => Math.Sqrt(i * i + j * j) <= searchSize + .5,
+                        NeighborSearchStyle.InverseRadial => Math.Sqrt(i * i + j * j) >= searchSize + .5,
+                        _ => false
+                    };
+
+                    if (include) OffsetMap.Add(new Coordinates(i, j));
+                }
+        ;
+
+            return [.. OffsetMap];
+        }
+
+        public static int GetSearchPatternSize(NeighborSearchStyle searchStyle, int searchSize)
+        {
+            Coordinates[] map = GetOffsetMap(searchStyle, searchSize);
+            return map.Length;
+        }
+    }
+
+    public enum NeighborSearchStyle
+    {
+        SquareGrid,
+        SquareEdge,
+        DiamondGrid,
+        DiamondEdge,
+        InverseDiamondGrid,
+        Radial,
+        InverseRadial,
     }
 
     public enum CharType
