@@ -288,7 +288,7 @@ namespace CLI_MineSweeper
             }
 
             input = input.Trim().ToLower();
-            string[] words = input.Split(' ', 2);
+            string[] words = input.Split(' ');
 
 
             if (words.Length == 0)
@@ -298,26 +298,33 @@ namespace CLI_MineSweeper
             }
 
             string command = words[0];
-            string[] args = words.Length > 1 ? words[1].Split(" ") : [];
+            string[] args = words.Length > 1 ? words[1..] : [];
             Commands(command, args);
         }
 
-        internal void Perform(Action<Coordinates> action, string[] args)
+        internal void Perform(Func<Coordinates, bool, bool> action, string[] args)
         {
-            Coordinates? target = GetCoordsFromCode(args[0]);
+            bool done = false;
+            bool result = false;
+            bool multiple = args.Length > 1;
 
-            if (target is not null)
+            foreach (var arg in args)
             {
-                action(target.Value);
-                return;
+                Coordinates? coords = GetCoordsFromCode(arg);
+
+                if (coords is not null)
+                {
+                    done = true;
+                    bool actionResult = action(coords.Value, multiple);
+                    if (!result) result = actionResult;
+                }
             }
-            else
-            {
-                Console.WriteLine("Coordenada invalida, tente novamente.");
-            }
+
+            if (!done) Console.WriteLine("Coordenada(s) invalida(s), tente novamente.");
+            else if(result) Display();
         }
 
-        internal void Dig(Coordinates coords)
+        internal bool Dig(Coordinates coords, bool multi = false)
         {
             if (!this[coords, Cell.isFlagged])
             {
@@ -325,26 +332,26 @@ namespace CLI_MineSweeper
 
                 CheckForGameOver();
                 FloodFillBFS(coords);
-                Display();
+                return true;
             }
-            else
-            {
-                Console.WriteLine("Você não pode revelar uma posição marcada.");
-            }
+
+            if (multi) Console.Write($"> {coords} => ");
+            Console.WriteLine("Você não pode revelar uma posição marcada.");
+            return false;
         }
 
 
-        internal void Flag(Coordinates coords)
+        internal bool Flag(Coordinates coords, bool multi = false)
         {
             if (!this[coords, Cell.isRevealed])
             {
                 this[coords, Cell.isFlagged] = !this[coords, Cell.isFlagged];
-                Display();
+                return true;
             }
-            else
-            {
-                Console.WriteLine("Você não pode desmarcar uma posição já revelada.");
-            }
+
+            if (multi) Console.Write($"> {coords} => ");
+            Console.WriteLine("Você não pode desmarcar uma posição já revelada.");
+            return false;
         }
 
         private void Commands(string command, string[] args)

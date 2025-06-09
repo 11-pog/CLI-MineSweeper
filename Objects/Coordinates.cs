@@ -15,7 +15,7 @@ namespace CLI_MineSweeper.Objects
         public MineSweeper? Source { get; private set; } = source;
 
         public readonly Coordinates Offset(int dx, int dy) => new(X + dx, Y + dy);
-        public void SetParent(MineSweeper parent) => Source ??= parent; 
+        public void SetParent(MineSweeper parent) => Source ??= parent;
 
         public readonly bool Equals(Coordinates other) => other.X == X && other.Y == Y;
         public override readonly bool Equals([NotNullWhen(true)] object? obj) => obj is Coordinates other && Equals(other);
@@ -25,6 +25,9 @@ namespace CLI_MineSweeper.Objects
         public static bool operator ==(Coordinates left, Coordinates right) => left.Equals(right);
         public static bool operator !=(Coordinates left, Coordinates right) => !left.Equals(right);
         public static Coordinates operator +(Coordinates left, Coordinates right) => new(left.X + right.X, left.Y + right.Y, left.Source);
+
+        public override readonly string ToString() => $"({X + 1}, {Y + 1})";
+
     }
 
     public static class CoordinateExtension
@@ -36,7 +39,7 @@ namespace CLI_MineSweeper.Objects
             byte OutOfBoundNeighbors = 0;
             byte RevealedNeighbors = 0;
             byte BombNeighbors = 0;
-            
+
             src.Source.IterateNeighbor(src, (coords, _) =>
             {
                 if (src.Source.IsInBounds(coords))
